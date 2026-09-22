@@ -17,6 +17,7 @@ on:
         # Kept up to date by `npm run new-game`.
         options:
           # games:start
+          - block-drop
           - star-catcher
           # games:end
       apk:
