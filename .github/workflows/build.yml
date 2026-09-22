@@ -18,6 +18,7 @@ on:
         options:
           # games:start
           - block-drop
+          - potion-match
           - star-catcher
           # games:end
       apk:
