@@ -1,5 +1,5 @@
 {
   "name": "Block Drop",
-  "description": "Stack falling blocks and clear full rows. Drag to move, tap to rotate, press DROP to drop.",
+  "description": "Stack falling blocks and clear full rows. Move, rotate and drop with the buttons.",
   "appId": "io.github.kvackie.trialanderror.blockdrop"
 }

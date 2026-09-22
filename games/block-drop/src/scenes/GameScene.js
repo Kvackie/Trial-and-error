@@ -11,12 +11,6 @@ const BOARD_BOTTOM = BOARD_Y + ROWS * CELL;
 const BUTTON_Y = 1190;
 const BUTTON_H = 120;
 
-// Touch gestures: drag distance per column, and what counts as a tap.
-// Dropping is left to the DROP button so a sideways drag can't push a piece down.
-const DRAG_STEP = CELL * 0.8;
-const TAP_MAX_MS = 250;
-const TAP_MAX_DIST = 16;
-
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('Game');
@@ -25,7 +19,6 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.logic = new BlockDropGame();
     this.elapsed = 0;
-    this.drag = null;
 
     this.shades = new Map();
     this.bgLevel = 0;
@@ -36,58 +29,12 @@ export class GameScene extends Phaser.Scene {
     this.statsText = this.add.text(24, 98, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
     this.add.text(606, 22, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
 
-    this.setUpGestures();
     this.setUpButtons();
     this.setUpKeyboard();
     this.redraw();
   }
 
   // --- Input ---------------------------------------------------------------
-
-  setUpGestures() {
-    // Everything above the buttons is a gesture area.
-    const zone = this.add.zone(0, 0, 720, BUTTON_Y - BUTTON_H / 2 - 10).setOrigin(0).setInteractive();
-
-    zone.on('pointerdown', (pointer) => {
-      this.drag = {
-        id: pointer.id,
-        startX: pointer.x,
-        startY: pointer.y,
-        lastX: pointer.x,
-        startTime: pointer.downTime,
-        moved: false,
-      };
-    });
-
-    this.input.on('pointermove', (pointer) => {
-      const drag = this.drag;
-      if (!drag || drag.id !== pointer.id || !pointer.isDown) return;
-
-      while (pointer.x - drag.lastX >= DRAG_STEP) {
-        drag.lastX += DRAG_STEP;
-        drag.moved = true;
-        this.act(() => this.logic.moveRight());
-      }
-      while (drag.lastX - pointer.x >= DRAG_STEP) {
-        drag.lastX -= DRAG_STEP;
-        drag.moved = true;
-        this.act(() => this.logic.moveLeft());
-      }
-    });
-
-    this.input.on('pointerup', (pointer) => {
-      const drag = this.drag;
-      if (!drag || drag.id !== pointer.id) return;
-      this.drag = null;
-
-      const duration = pointer.upTime - drag.startTime;
-      const distance = Phaser.Math.Distance.Between(drag.startX, drag.startY, pointer.x, pointer.y);
-
-      if (!drag.moved && duration < TAP_MAX_MS && distance < TAP_MAX_DIST) {
-        this.act(() => this.logic.rotate());
-      }
-    });
-  }
 
   setUpButtons() {
     const buttons = [
