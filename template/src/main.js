@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { scaleConfig } from '../../../shared/screen.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -28,11 +29,6 @@ new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#10132a',
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 720,
-    height: 1280,
-  },
+  scale: scaleConfig(),
   scene: [MainScene],
 });

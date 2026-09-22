@@ -1,26 +1,19 @@
 import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene.js';
-import { GameOverScene } from './scenes/GameOverScene.js';
-
-export const WIDTH = 720;
-export const HEIGHT = 1280;
+import { createGameOverScene } from '../../../shared/game-over-scene.js';
+import { scaleConfig } from '../../../shared/screen.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#10132a',
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: WIDTH,
-    height: HEIGHT,
-  },
+  scale: scaleConfig(),
   physics: {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 } },
   },
   input: { activePointers: 3 },
-  scene: [GameScene, GameOverScene],
+  scene: [GameScene, createGameOverScene('star-catcher:best')],
 });
 
 // Handy for poking at the game from the browser console during development.

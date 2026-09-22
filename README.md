@@ -5,17 +5,39 @@ A collection of small mobile games built with [Phaser](https://phaser.io/). Each
 - Hub page: `https://kvackie.github.io/Trial-and-error/`
 - One game: `https://kvackie.github.io/Trial-and-error/<game>/`
 
+All games are **mobile first, desktop second**: designed for a phone held upright and played by touch, then checked on desktop. The rules every game follows (and that coding agents working here must follow) are in [AGENTS.md](AGENTS.md).
+
+## Games
+
+| Game | Folder | What it is |
+|---|---|---|
+| Star Catcher | `games/star-catcher/` | Tap the falling stars before they hit the ground. |
+| Block Drop | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
+| Potion Match | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
+
 ## Layout
 
 ```
 games/<game>/      one folder per game: index.html, src/, public/, game.json
 template/          starting point copied by `npm run new-game`
-shared/            code any game can import, e.g. the "How to play" dialog (shared/help-dialog.js)
+shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
 ```
 
 `game.json` holds the game's display name, a one-line description for the hub page, and its Android app ID (which must be unique per game).
+
+### Shared code
+
+Games import these with `../../../shared/<file>` from their `src/` folder:
+
+| File | What it gives a game |
+|---|---|
+| `shared/screen.js` | `scaleConfig()`: a portrait canvas 720 units wide whose height follows the screen's shape, so the playfield can use the whole phone screen. |
+| `shared/help-dialog.js` | `openHelpDialog()`: the scrollable "How to play" window opened by each game's **?** button. |
+| `shared/game-over-scene.js` | `createGameOverScene('<game>:best')`: score, best score and tap to play again. |
+
+When a second game needs something that already exists in one game, move it into `shared/` instead of copying it.
 
 ## Develop
 
@@ -32,7 +54,7 @@ npm run hub                      # writes dist/index.html listing the games buil
 npm run new-game -- my-game "My Game"
 ```
 
-This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-game` to the workflow's dropdown. Commit and push, and it can be selected in the workflow.
+This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-game` to the workflow's dropdown. The template already uses the shared screen sizing. Commit and push, and it can be selected in the workflow.
 
 ## Build and deploy
 
