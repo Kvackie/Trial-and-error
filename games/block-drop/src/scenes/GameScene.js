@@ -30,7 +30,6 @@ export class GameScene extends Phaser.Scene {
     this.add.text(606, 22, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
 
     this.setUpButtons();
-    this.setUpKeyboard();
     this.redraw();
   }
 
@@ -82,20 +81,6 @@ export class GameScene extends Phaser.Scene {
       bg.on('pointerup', release);
       bg.on('pointerout', release);
     });
-  }
-
-  setUpKeyboard() {
-    const keys = {
-      LEFT: () => this.logic.moveLeft(),
-      RIGHT: () => this.logic.moveRight(),
-      DOWN: () => this.logic.softDrop(),
-      UP: () => this.logic.rotate(),
-      X: () => this.logic.rotate(),
-      SPACE: () => this.logic.hardDrop(),
-    };
-    for (const [key, action] of Object.entries(keys)) {
-      this.input.keyboard?.on(`keydown-${key}`, () => this.act(action));
-    }
   }
 
   // Run a player action, then react to what it did to the board.

@@ -107,14 +107,6 @@ export class BlockDropGame {
     return false;
   }
 
-  // One row down by the player. Never locks, so a held drag or button can't
-  // accidentally push the next piece down too; gravity does the locking.
-  softDrop() {
-    if (!this.tryMove(0, 1)) return false;
-    this.score += 1;
-    return true;
-  }
-
   hardDrop() {
     if (this.over) return 0;
     let rows = 0;
