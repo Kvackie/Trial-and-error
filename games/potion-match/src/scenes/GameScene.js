@@ -4,7 +4,7 @@ import { Board, COLS, MOVES, ROWS } from '../logic.js';
 // Potion art from Eternal Alchemy. Index = colour in the board logic.
 const POTIONS = [
   { key: 'emberSovereign', tint: 0xff4d4d },
-  { key: 'loamCommon', tint: 0xffd23f },
+  { key: 'loamSovereign', tint: 0xffd23f },
   { key: 'clayrillCordial', tint: 0x4ee84e },
   { key: 'tideCommon', tint: 0x3ab8ff },
   { key: 'skysalt', tint: 0xa66bff },
