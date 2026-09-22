@@ -13,6 +13,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 |---|---|---|
 | Block Drop | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
 | Potion Match | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
+| Lantern Maze | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
 
 ## Layout
 

@@ -1,0 +1,5 @@
+{
+  "name": "Lantern Maze",
+  "description": "Find your way through dark, ever-growing mazes by lantern light. Every dead end hides a locked chest and a sum to solve.",
+  "appId": "io.github.kvackie.trialanderror.lanternmaze"
+}
