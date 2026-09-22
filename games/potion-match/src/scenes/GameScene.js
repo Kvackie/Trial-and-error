@@ -1,29 +1,16 @@
 import Phaser from 'phaser';
 import { Board, COLS, MOVES, ROWS } from '../logic.js';
+import { POTIONS, SPECIAL_ART, artPath } from '../art.js';
+import { openHelp } from '../help.js';
 
-// Potion art from Eternal Alchemy. Index = colour in the board logic.
-const POTIONS = [
-  { key: 'emberSovereign', tint: 0xff4d4d },
-  { key: 'loamSovereign', tint: 0xffd23f },
-  { key: 'clayrillCordial', tint: 0x4ee84e },
-  { key: 'tideCommon', tint: 0x3ab8ff },
-  { key: 'skysalt', tint: 0xa66bff },
-  { key: 'emberGaleGreater', tint: 0xff5fc8 },
-];
-const SPECIAL_ART = {
-  bomb: { key: 'loamGaleGrand', glow: 0xff9f1c, name: 'Bomb', how: 'Match 4', does: 'clears everything around it' },
-  cross: { key: 'murk', glow: 0xffffff, name: 'Cross', how: 'Match an L or T', does: 'clears its row and column' },
-  rainbow: { key: 'embertideElixir', glow: 0xff5fc8, name: 'Rainbow', how: 'Match 5', does: 'swap it to clear one colour' },
-};
-
-const CELL = 84;
-const BOARD_X = (720 - COLS * CELL) / 2;
-const BOARD_Y = 230;
-const POTION_HEIGHT = 76;
+const CELL = 87;
+const BOARD_SIZE = COLS * CELL;
+const BOARD_X = (720 - BOARD_SIZE) / 2;
+const HUD_HEIGHT = 130;
+const HUD_GAP = 26;
+const POTION_HEIGHT = 80;
 const SWIPE_DIST = 30;
 const HINT_DELAY = 6000;
-
-const cellCenter = (r, c) => ({ x: BOARD_X + c * CELL + CELL / 2, y: BOARD_Y + r * CELL + CELL / 2 });
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -31,10 +18,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    for (const { key } of [...POTIONS, ...Object.values(SPECIAL_ART)]) this.load.image(key, `potions/${key}.png`);
+    for (const { key } of [...POTIONS, ...Object.values(SPECIAL_ART)]) this.load.image(key, artPath(key));
   }
 
   create() {
+    // Score, moves and board sit together as one block, centred on screens of any height.
+    const blockTop = Math.max(16, (this.scale.height - (HUD_HEIGHT + HUD_GAP + BOARD_SIZE)) / 2);
+    this.hudY = blockTop;
+    this.boardY = blockTop + HUD_HEIGHT + HUD_GAP;
+
     this.board = new Board();
     this.score = 0;
     this.movesLeft = MOVES;
@@ -45,7 +37,6 @@ export class GameScene extends Phaser.Scene {
 
     this.drawHud();
     this.drawBoardBackground();
-    this.drawLegend();
 
     this.selection = this.add.rectangle(0, 0, CELL - 6, CELL - 6).setStrokeStyle(4, 0xffffff).setVisible(false);
     this.selection.setDepth(1);
@@ -59,43 +50,46 @@ export class GameScene extends Phaser.Scene {
   // --- Layout ----------------------------------------------------------------
 
   drawHud() {
+    const y = this.hudY;
     const text = { fontFamily: 'sans-serif', color: '#ffffff' };
-    this.add.text(24, 30, 'SCORE', { ...text, fontSize: '26px', color: '#e8dcff' });
-    this.scoreText = this.add.text(24, 62, '0', { ...text, fontSize: '64px', fontStyle: 'bold', color: '#ffd23f' });
-    this.add.text(696, 30, 'MOVES', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0);
+    this.add.text(BOARD_X + 4, y, 'SCORE', { ...text, fontSize: '26px', color: '#e8dcff' });
+    this.scoreText = this.add.text(BOARD_X + 4, y + 32, '0', { ...text, fontSize: '68px', fontStyle: 'bold', color: '#ffd23f' });
+    this.add.text(720 - BOARD_X - 4, y, 'MOVES', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0);
     this.movesText = this.add
-      .text(696, 62, String(this.movesLeft), { ...text, fontSize: '64px', fontStyle: 'bold' })
+      .text(720 - BOARD_X - 4, y + 32, String(this.movesLeft), { ...text, fontSize: '68px', fontStyle: 'bold' })
       .setOrigin(1, 0);
-    this.add.text(360, 170, 'Swipe or tap two potions to swap them', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(0.5);
+
+    // Help button: opens the rules in a dialog so they stay off the playfield.
+    const help = this.add.circle(360, y + 62, 34, 0x43207a).setStrokeStyle(3, 0xc77dff).setInteractive({ useHandCursor: true });
+    this.add.text(360, y + 62, '?', { ...text, fontSize: '44px', fontStyle: 'bold' }).setOrigin(0.5);
+    help.on('pointerup', () => this.showHelp());
+  }
+
+  showHelp() {
+    this.select(null);
+    this.pending = null;
+    this.stopHint();
+    this.input.enabled = false;
+    openHelp(() => {
+      this.input.enabled = true;
+      if (!this.busy) this.restartHintTimer();
+    });
   }
 
   drawBoardBackground() {
     const g = this.add.graphics();
-    g.fillStyle(0x0d0820, 0.6).fillRoundedRect(BOARD_X - 8, BOARD_Y - 8, COLS * CELL + 16, ROWS * CELL + 16, 18);
+    g.fillStyle(0x0d0820, 0.6).fillRoundedRect(BOARD_X - 6, this.boardY - 6, BOARD_SIZE + 12, BOARD_SIZE + 12, 16);
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         g.fillStyle(0xffffff, (r + c) % 2 ? 0.04 : 0.09);
-        g.fillRoundedRect(BOARD_X + c * CELL + 2, BOARD_Y + r * CELL + 2, CELL - 4, CELL - 4, 10);
+        g.fillRoundedRect(BOARD_X + c * CELL + 2, this.boardY + r * CELL + 2, CELL - 4, CELL - 4, 10);
       }
     }
-    g.lineStyle(3, 0xc77dff, 0.9).strokeRoundedRect(BOARD_X - 8, BOARD_Y - 8, COLS * CELL + 16, ROWS * CELL + 16, 18);
-  }
-
-  drawLegend() {
-    const top = BOARD_Y + ROWS * CELL + 40;
-    this.add.text(360, top, 'SPECIAL POTIONS', { fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#e8dcff' }).setOrigin(0.5, 0);
-    Object.values(SPECIAL_ART).forEach((spec, i) => {
-      const y = top + 80 + i * 96;
-      this.add.circle(70, y, 36, spec.glow, 0.25);
-      const icon = this.add.image(70, y, spec.key);
-      icon.setScale(64 / icon.height);
-      this.add.text(124, y - 30, `${spec.name}  ·  ${spec.how}`, { fontFamily: 'sans-serif', fontSize: '28px', fontStyle: 'bold', color: '#ffffff' });
-      this.add.text(124, y + 6, spec.does, { fontFamily: 'sans-serif', fontSize: '24px', color: '#e8dcff' });
-    });
+    g.lineStyle(3, 0xc77dff, 0.9).strokeRoundedRect(BOARD_X - 6, this.boardY - 6, BOARD_SIZE + 12, BOARD_SIZE + 12, 16);
   }
 
   createView(piece, r, c, fromRow = r) {
-    const { x, y } = cellCenter(fromRow, c);
+    const { x, y } = this.cellCenter(fromRow, c);
     const container = this.add.container(x, y);
     if (piece.special) {
       const spec = SPECIAL_ART[piece.special];
@@ -122,11 +116,15 @@ export class GameScene extends Phaser.Scene {
     for (const view of this.views.values()) view.getData('rainbowGlow')?.setFillStyle(color, view.getData('rainbowGlow').fillAlpha);
   }
 
+  cellCenter(r, c) {
+    return { x: BOARD_X + c * CELL + CELL / 2, y: this.boardY + r * CELL + CELL / 2 };
+  }
+
   // --- Input -----------------------------------------------------------------
 
   cellAt(x, y) {
     const c = Math.floor((x - BOARD_X) / CELL);
-    const r = Math.floor((y - BOARD_Y) / CELL);
+    const r = Math.floor((y - this.boardY) / CELL);
     return r >= 0 && r < ROWS && c >= 0 && c < COLS ? [r, c] : null;
   }
 
@@ -172,7 +170,7 @@ export class GameScene extends Phaser.Scene {
       this.selection.setVisible(false);
       return;
     }
-    const { x, y } = cellCenter(...cell);
+    const { x, y } = this.cellCenter(...cell);
     this.selection.setPosition(x, y).setVisible(true);
   }
 
@@ -214,8 +212,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   swapViews(va, vb, a, b) {
-    const pa = cellCenter(...b);
-    const pb = cellCenter(...a);
+    const pa = this.cellCenter(...b);
+    const pb = this.cellCenter(...a);
     return Promise.all([
       this.tween({ targets: va, x: pa.x, y: pa.y, duration: 160, ease: 'Quad.easeInOut' }),
       this.tween({ targets: vb, x: pb.x, y: pb.y, duration: 160, ease: 'Quad.easeInOut' }),
@@ -236,7 +234,7 @@ export class GameScene extends Phaser.Scene {
       const view = this.views.get(piece.id);
       this.views.delete(piece.id);
       if (!view) return null;
-      this.sparkle(cellCenter(r, c), piece.color == null ? 0xffffff : POTIONS[piece.color].tint);
+      this.sparkle(this.cellCenter(r, c), piece.color == null ? 0xffffff : POTIONS[piece.color].tint);
       return this.tween({ targets: view, scale: 0, alpha: 0, duration: 200, ease: 'Back.easeIn' }).then(() => view.destroy());
     });
 
@@ -249,7 +247,7 @@ export class GameScene extends Phaser.Scene {
     this.score += points;
     this.scoreText.setText(String(this.score));
     const centre = removed.reduce((acc, { r, c }) => ({ r: acc.r + r / removed.length, c: acc.c + c / removed.length }), { r: 0, c: 0 });
-    this.floatText(cellCenter(centre.r, centre.c), cascade > 1 ? `+${points}  x${cascade}` : `+${points}`, cascade);
+    this.floatText(this.cellCenter(centre.r, centre.c), cascade > 1 ? `+${points}  x${cascade}` : `+${points}`, cascade);
 
     await Promise.all(pops);
   }
@@ -258,20 +256,20 @@ export class GameScene extends Phaser.Scene {
     const falls = [];
     for (const { piece, from, to } of moves) {
       const view = this.views.get(piece.id);
-      const { y } = cellCenter(...to);
+      const { y } = this.cellCenter(...to);
       falls.push(this.tween({ targets: view, y, duration: 90 + (to[0] - from[0]) * 60, ease: 'Quad.easeIn' }));
     }
     for (const { piece, to, fromRow } of spawns) {
       const view = this.createView(piece, to[0], to[1], fromRow);
       view.setAlpha(0);
-      const { y } = cellCenter(...to);
+      const { y } = this.cellCenter(...to);
       falls.push(this.tween({ targets: view, y, alpha: 1, duration: 90 + (to[0] - fromRow) * 60, ease: 'Quad.easeIn' }));
     }
     await Promise.all(falls);
   }
 
   async animateShuffle({ positions }) {
-    this.floatText({ x: 360, y: BOARD_Y + (ROWS * CELL) / 2 }, 'No moves - shuffling!', 1);
+    this.floatText({ x: 360, y: this.boardY + (ROWS * CELL) / 2 }, 'No moves - shuffling!', 1);
     const keep = new Set(positions.map(({ piece }) => piece.id));
     for (const [id, view] of this.views) {
       if (!keep.has(id)) {
@@ -282,14 +280,14 @@ export class GameScene extends Phaser.Scene {
     await Promise.all(
       positions.map(({ piece, to }) => {
         const view = this.views.get(piece.id) ?? this.createView(piece, ...to);
-        const { x, y } = cellCenter(...to);
+        const { x, y } = this.cellCenter(...to);
         return this.tween({ targets: view, x, y, duration: 450, delay: 300, ease: 'Cubic.easeInOut' });
       }),
     );
   }
 
   blastEffect({ r, c, special }) {
-    const { x, y } = cellCenter(r, c);
+    const { x, y } = this.cellCenter(r, c);
     if (special === 'bomb') {
       const ring = this.add.circle(x, y, CELL * 0.5, 0xff9f1c, 0.7).setDepth(2);
       this.tween({ targets: ring, scale: 3.4, alpha: 0, duration: 380, ease: 'Cubic.easeOut' }).then(() => ring.destroy());
@@ -297,7 +295,7 @@ export class GameScene extends Phaser.Scene {
       const w = COLS * CELL;
       const h = ROWS * CELL;
       const row = this.add.rectangle(BOARD_X + w / 2, y, w, CELL * 0.8, 0xffffff, 0.8).setDepth(2);
-      const col = this.add.rectangle(x, BOARD_Y + h / 2, CELL * 0.8, h, 0xffffff, 0.8).setDepth(2);
+      const col = this.add.rectangle(x, this.boardY + h / 2, CELL * 0.8, h, 0xffffff, 0.8).setDepth(2);
       this.tween({ targets: [row, col], alpha: 0, duration: 380 }).then(() => {
         row.destroy();
         col.destroy();
