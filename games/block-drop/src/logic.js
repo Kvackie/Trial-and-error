@@ -3,14 +3,14 @@
 export const COLS = 10;
 export const ROWS = 20;
 
-const PIECES = {
-  I: { color: 0x4cc9f0, cells: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]] },
-  O: { color: 0xffd166, cells: [[1, 1], [1, 1]] },
-  T: { color: 0xb388eb, cells: [[0, 1, 0], [1, 1, 1], [0, 0, 0]] },
-  S: { color: 0x06d6a0, cells: [[0, 1, 1], [1, 1, 0], [0, 0, 0]] },
-  Z: { color: 0xef476f, cells: [[1, 1, 0], [0, 1, 1], [0, 0, 0]] },
-  J: { color: 0x4361ee, cells: [[1, 0, 0], [1, 1, 1], [0, 0, 0]] },
-  L: { color: 0xf8961e, cells: [[0, 0, 1], [1, 1, 1], [0, 0, 0]] },
+export const PIECES = {
+  I: { color: 0x3ae0ff, cells: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]] },
+  O: { color: 0xffd23f, cells: [[1, 1], [1, 1]] },
+  T: { color: 0xc77dff, cells: [[0, 1, 0], [1, 1, 1], [0, 0, 0]] },
+  S: { color: 0x2ee88a, cells: [[0, 1, 1], [1, 1, 0], [0, 0, 0]] },
+  Z: { color: 0xff4d6d, cells: [[1, 1, 0], [0, 1, 1], [0, 0, 0]] },
+  J: { color: 0x4d7cff, cells: [[1, 0, 0], [1, 1, 1], [0, 0, 0]] },
+  L: { color: 0xff9f1c, cells: [[0, 0, 1], [1, 1, 1], [0, 0, 0]] },
 };
 
 // Points for clearing 1-4 rows at once, multiplied by the level.
@@ -30,6 +30,7 @@ export class BlockDropGame {
     this.lines = 0;
     this.level = 1;
     this.over = false;
+    this.lastCleared = []; // row indices cleared by the most recent lock, for effects
     this.next = this.takeFromBag();
     this.spawn();
   }
@@ -150,6 +151,7 @@ export class BlockDropGame {
     }
 
     const full = [];
+    this.lastCleared = full;
     this.board.forEach((row, index) => row.every(Boolean) && full.push(index));
     if (full.length) {
       this.board = this.board.filter((_, index) => !full.includes(index));
