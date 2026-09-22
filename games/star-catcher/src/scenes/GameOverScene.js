@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-const BEST_KEY = 'trial-and-error:best';
+const BEST_KEY = 'star-catcher:best';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {

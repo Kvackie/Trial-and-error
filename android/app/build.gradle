@@ -1,10 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Written by scripts/android.mjs for the game being packaged.
+def game = new Properties()
+def gameFile = rootProject.file('game.properties')
+if (gameFile.exists()) {
+    gameFile.withInputStream { game.load(it) }
+}
+def gameAppName = game.getProperty('appName', 'Trial and Error')
+
 android {
     namespace = "io.github.kvackie.trialanderror"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "io.github.kvackie.trialanderror"
+        applicationId game.getProperty('appId', 'io.github.kvackie.trialanderror')
+        resValue "string", "app_name", gameAppName
+        resValue "string", "title_activity_main", gameAppName
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes the workflow run number so every build installs as an update.

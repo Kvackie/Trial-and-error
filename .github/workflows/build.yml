@@ -1,20 +1,34 @@
 name: Build and deploy
 
-# One pipeline for everything, started manually from the Actions tab.
-# It builds the web game and the APK for the selected branch. Runs on the
-# default branch also deploy to GitHub Pages and refresh the "latest"
-# release with the new APK.
+# Started manually from the Actions tab. Builds only the selected game.
+# On the default branch it also:
+#   - publishes the game to its own folder on the gh-pages branch (other games
+#     are left untouched) and regenerates the hub page listing all games
+#   - publishes the APK to the game's "<game>-latest" release
+run-name: Build ${{ inputs.game }}
+
 on:
   workflow_dispatch:
-
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+    inputs:
+      game:
+        description: Game to build
+        required: true
+        type: choice
+        # Kept up to date by `npm run new-game`.
+        options:
+          # games:start
+          - star-catcher
+          # games:end
+      apk:
+        description: Also build the Android APK
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 env:
+  GAME: ${{ inputs.game }}
   IS_DEFAULT_BRANCH: ${{ github.ref_name == github.event.repository.default_branch }}
 
 jobs:
@@ -27,26 +41,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - run: npm run build -- "$GAME"
+      - uses: actions/upload-artifact@v4
         with:
-          path: dist
-
-  deploy-pages:
-    needs: web
-    if: github.ref_name == github.event.repository.default_branch
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          name: web-${{ inputs.game }}
+          path: dist/${{ inputs.game }}
 
   android:
+    if: inputs.apk
+    needs: web
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -65,8 +68,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - run: npm ci
-      - run: npm run build
-      - run: npx cap sync android
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-${{ inputs.game }}
+          path: dist/${{ inputs.game }}
+      - run: npm run android -- "$GAME"
 
       - name: Decode signing keystore
         if: env.HAS_KEYSTORE == 'true'
@@ -85,20 +91,79 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           ./gradlew assembleRelease --no-daemon
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/trial-and-error.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/$GAME.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: trial-and-error-apk
-          path: trial-and-error.apk
+          name: ${{ inputs.game }}-apk
+          path: ${{ inputs.game }}.apk
 
-      - name: Publish to "latest" release
+      - name: Publish to "<game>-latest" release
         if: env.IS_DEFAULT_BRANCH == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest trial-and-error.apk \
+          tag="$GAME-latest"
+          gh release delete "$tag" --yes --cleanup-tag || true
+          gh release create "$tag" "$GAME.apk" \
             --target "$GITHUB_SHA" \
-            --title "Latest build (#${{ github.run_number }})" \
-            --notes "Built from ${GITHUB_SHA::7}. Download trial-and-error.apk and open it on your Android device to install."
+            --title "$GAME (build #${{ github.run_number }})" \
+            --notes "Built from ${GITHUB_SHA::7}. Download $GAME.apk and open it on your Android device to install."
+
+  deploy:
+    needs: [web, android]
+    # Runs when the APK succeeded or wasn't requested, so the hub never links a missing APK.
+    if: >-
+      !cancelled() && github.ref_name == github.event.repository.default_branch &&
+      needs.web.result == 'success' && needs.android.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Deploys of different games queue up instead of racing on the gh-pages branch.
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check out gh-pages
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git fetch --depth 1 origin gh-pages
+            git worktree add -B gh-pages site FETCH_HEAD
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-${{ inputs.game }}
+          path: build
+
+      - name: Replace this game's folder
+        env:
+          APK_BUILT: ${{ needs.android.result == 'success' }}
+        run: |
+          previous_apk=$(jq -r '.apk // false' "site/$GAME/build.json" 2>/dev/null || echo false)
+          rm -rf "site/$GAME"
+          cp -r build "site/$GAME"
+          apk=false
+          if [ "$APK_BUILT" = true ] || [ "$previous_apk" = true ]; then apk=true; fi
+          jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" \
+            '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$GAME/build.json"
+          touch site/.nojekyll
+
+      - name: Regenerate hub page
+        run: node scripts/build-hub.mjs site
+
+      - name: Push gh-pages
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy $GAME (${GITHUB_SHA::7})"
+          git push origin gh-pages
