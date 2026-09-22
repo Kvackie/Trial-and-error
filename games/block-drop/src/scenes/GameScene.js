@@ -103,7 +103,6 @@ export class GameScene extends Phaser.Scene {
     const buttons = [
       { label: '◀', color: PIECES.J.color, action: () => this.logic.moveLeft(), repeat: true },
       { label: '▶', color: PIECES.I.color, action: () => this.logic.moveRight(), repeat: true },
-      { label: '▼', color: PIECES.S.color, action: () => this.logic.softDrop(), repeat: true },
       { label: 'DROP', color: PIECES.Z.color, action: () => this.logic.hardDrop(), repeat: false },
       { label: '↻', color: PIECES.L.color, action: () => this.logic.rotate(), repeat: false },
     ];
