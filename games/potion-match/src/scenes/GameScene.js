@@ -11,9 +11,9 @@ const POTIONS = [
   { key: 'emberGaleGreater', tint: 0xff5fc8 },
 ];
 const SPECIAL_ART = {
-  bomb: { key: 'cinderveilBomb', glow: 0xff9f1c, name: 'Bomb', how: 'Match 4', does: 'clears everything around it' },
-  cross: { key: 'healthTonic', glow: 0xffffff, name: 'Cross', how: 'Match an L or T', does: 'clears its row and column' },
-  rainbow: { key: 'pilgrimsRestorative', glow: 0xff5fc8, name: 'Rainbow', how: 'Match 5', does: 'swap it to clear one colour' },
+  bomb: { key: 'loamGaleGrand', glow: 0xff9f1c, name: 'Bomb', how: 'Match 4', does: 'clears everything around it' },
+  cross: { key: 'murk', glow: 0xffffff, name: 'Cross', how: 'Match an L or T', does: 'clears its row and column' },
+  rainbow: { key: 'embertideElixir', glow: 0xff5fc8, name: 'Rainbow', how: 'Match 5', does: 'swap it to clear one colour' },
 };
 
 const CELL = 84;
