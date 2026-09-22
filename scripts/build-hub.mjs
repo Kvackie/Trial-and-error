@@ -32,7 +32,6 @@ const cards = games
         <a class="play" href="./${game.id}/">
           <h2>${escapeHtml(game.name)}</h2>
           <p>${escapeHtml(game.description)}</p>
-          <span class="cta">Play &#9654;</span>
         </a>
         ${updated}${apk}
       </li>`;
@@ -47,41 +46,29 @@ const html = `<!doctype html>
     <meta name="theme-color" content="#10132a" />
     <title>Trial and Error</title>
     <style>
-      :root { color-scheme: dark; --bg: #10132a; --card: #1c2046; --card-hover: #252a5a; --text: #f4f4fb; --muted: #a3a6c8; --accent: #ffd166; }
+      :root { color-scheme: dark; --bg: #10132a; --card: #1c2046; --frame: #5a5e8f; --text: #f4f4fb; --muted: #a3a6c8; --accent: #ffd166; }
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
       main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
       h1 { margin: 0 0 4px; font-size: 2rem; }
       .intro { margin: 0 0 24px; color: var(--muted); }
       ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-      .card {
-        position: relative;
-        background: var(--card);
-        border: 2px solid transparent;
-        border-radius: 14px;
-        padding: 16px;
-        transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      .card { background: var(--card); border-radius: 14px; padding: 16px; }
+      /* The framed title and description are the link that opens the game. */
+      .play {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--frame);
+        border-radius: 10px;
+        transition: border-color 0.15s;
       }
-      .card:hover { border-color: var(--accent); background: var(--card-hover); }
-      .card:active { transform: scale(0.98); }
-      .card:has(.play:focus-visible) { border-color: var(--accent); }
-      .play { color: inherit; text-decoration: none; display: block; outline: none; }
-      /* Stretch the play link over the whole card so any tap on it opens the game. */
-      .play::after { content: ""; position: absolute; inset: 0; border-radius: 12px; }
+      .play:hover, .play:focus-visible { border-color: var(--accent); outline: none; }
       .play h2 { margin: 0 0 6px; font-size: 1.25rem; color: var(--accent); }
       .play p { margin: 0; line-height: 1.4; }
-      .cta {
-        display: inline-block;
-        margin-top: 14px;
-        padding: 10px 22px;
-        border-radius: 999px;
-        background: var(--accent);
-        color: var(--bg);
-        font-weight: 700;
-      }
       .meta { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
-      /* Sits above the stretched play link so it stays separately tappable. */
-      .apk { position: relative; z-index: 1; display: inline-block; margin-top: 10px; font-size: 0.9rem; color: var(--text); }
+      .apk { display: inline-block; margin-top: 10px; font-size: 0.9rem; color: var(--text); }
       .empty { color: var(--muted); }
     </style>
   </head>
