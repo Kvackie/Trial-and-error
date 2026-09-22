@@ -1,0 +1,8 @@
+{
+  "appId": "io.github.kvackie.trialanderror",
+  "appName": "Trial and Error",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#10132a"
+  }
+}
