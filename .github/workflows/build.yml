@@ -19,7 +19,6 @@ on:
           # games:start
           - block-drop
           - potion-match
-          - star-catcher
           # games:end
       apk:
         description: Also build the Android APK

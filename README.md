@@ -11,7 +11,6 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 
 | Game | Folder | What it is |
 |---|---|---|
-| Star Catcher | `games/star-catcher/` | Tap the falling stars before they hit the ground. |
 | Block Drop | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
 | Potion Match | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
 
@@ -43,8 +42,8 @@ When a second game needs something that already exists in one game, move it into
 
 ```sh
 npm install
-npm run dev -- star-catcher      # http://localhost:5173, also reachable from your phone on the same network
-npm run build -- star-catcher    # builds into dist/star-catcher/
+npm run dev -- block-drop        # http://localhost:5173, also reachable from your phone on the same network
+npm run build -- block-drop      # builds into dist/block-drop/
 npm run hub                      # writes dist/index.html listing the games built into dist/
 ```
 
@@ -94,6 +93,6 @@ Other games already on `gh-pages` are never touched. The APK's `versionCode` is 
 Requires JDK 21 and the Android SDK.
 
 ```sh
-npm run android -- star-catcher
+npm run android -- block-drop
 cd android && ./gradlew assembleRelease
 ```
