@@ -15,9 +15,9 @@ Game code lives in `src/`. Files in `public/` are copied as-is into the build.
 
 ## Build pipeline
 
-`.github/workflows/build.yml` runs on every push. There is no separate CI and production setup:
+`.github/workflows/build.yml` only runs when you start it: **Actions → Build and deploy → Run workflow**, then pick a branch. There is no separate CI and production setup:
 
-| Job | Every push | Default branch only |
+| Job | Every run | Default branch only |
 |---|---|---|
 | `web` | builds `dist/` | |
 | `deploy-pages` | | deploys to GitHub Pages |

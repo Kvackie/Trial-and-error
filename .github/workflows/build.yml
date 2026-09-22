@@ -1,10 +1,10 @@
 name: Build and deploy
 
-# One pipeline for everything: every push builds the web game and the APK.
-# Pushes to the default branch also deploy to GitHub Pages and refresh the
-# "latest" release with the new APK.
+# One pipeline for everything, started manually from the Actions tab.
+# It builds the web game and the APK for the selected branch. Runs on the
+# default branch also deploy to GitHub Pages and refresh the "latest"
+# release with the new APK.
 on:
-  push:
   workflow_dispatch:
 
 concurrency:
