@@ -11,12 +11,11 @@ const BOARD_BOTTOM = BOARD_Y + ROWS * CELL;
 const BUTTON_Y = 1190;
 const BUTTON_H = 120;
 
-// Touch gestures: drag distance per column/row, and what counts as a tap or a flick.
+// Touch gestures: drag distance per column, and what counts as a tap.
+// Dropping is left to the DROP button so a sideways drag can't push a piece down.
 const DRAG_STEP = CELL * 0.8;
 const TAP_MAX_MS = 250;
 const TAP_MAX_DIST = 16;
-const FLICK_MIN_SPEED = 1.2; // px per ms, downward
-const FLICK_MIN_DIST = 80;
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -55,7 +54,6 @@ export class GameScene extends Phaser.Scene {
         startX: pointer.x,
         startY: pointer.y,
         lastX: pointer.x,
-        lastY: pointer.y,
         startTime: pointer.downTime,
         moved: false,
       };
@@ -75,11 +73,6 @@ export class GameScene extends Phaser.Scene {
         drag.moved = true;
         this.act(() => this.logic.moveLeft());
       }
-      while (pointer.y - drag.lastY >= DRAG_STEP) {
-        drag.lastY += DRAG_STEP;
-        drag.moved = true;
-        this.act(() => this.logic.softDrop());
-      }
     });
 
     this.input.on('pointerup', (pointer) => {
@@ -87,13 +80,10 @@ export class GameScene extends Phaser.Scene {
       if (!drag || drag.id !== pointer.id) return;
       this.drag = null;
 
-      const duration = Math.max(1, pointer.upTime - drag.startTime);
-      const dy = pointer.y - drag.startY;
+      const duration = pointer.upTime - drag.startTime;
       const distance = Phaser.Math.Distance.Between(drag.startX, drag.startY, pointer.x, pointer.y);
 
-      if (dy > FLICK_MIN_DIST && dy / duration > FLICK_MIN_SPEED) {
-        this.act(() => this.logic.hardDrop());
-      } else if (!drag.moved && duration < TAP_MAX_MS && distance < TAP_MAX_DIST) {
+      if (!drag.moved && duration < TAP_MAX_MS && distance < TAP_MAX_DIST) {
         this.act(() => this.logic.rotate());
       }
     });
