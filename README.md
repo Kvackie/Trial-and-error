@@ -10,6 +10,7 @@ A collection of small mobile games built with [Phaser](https://phaser.io/). Each
 ```
 games/<game>/      one folder per game: index.html, src/, public/, game.json
 template/          starting point copied by `npm run new-game`
+shared/            code any game can import, e.g. the "How to play" dialog (shared/help-dialog.js)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
 ```

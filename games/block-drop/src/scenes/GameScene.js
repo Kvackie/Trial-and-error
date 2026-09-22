@@ -1,15 +1,14 @@
 import Phaser from 'phaser';
 import { BlockDropGame, COLS, PIECES, ROWS } from '../logic.js';
+import { openHelp } from '../help.js';
 
 const { Color } = Phaser.Display;
 const PALETTE = Object.values(PIECES).map((piece) => piece.color);
 
-const CELL = 46;
-const BOARD_X = (720 - COLS * CELL) / 2;
-const BOARD_Y = 180;
-const BOARD_BOTTOM = BOARD_Y + ROWS * CELL;
-const BUTTON_Y = 1190;
+const HEADER_H = 150;
+const GAP = 20;
 const BUTTON_H = 120;
+const MARGIN = 24;
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.layout();
     this.logic = new BlockDropGame();
     this.elapsed = 0;
 
@@ -25,15 +25,42 @@ export class GameScene extends Phaser.Scene {
     this.gfx = this.add.graphics();
 
     const label = { fontFamily: 'sans-serif', color: '#ffffff' };
-    this.scoreText = this.add.text(24, 28, '', { ...label, fontSize: '52px', fontStyle: 'bold', color: '#ffd23f' });
-    this.statsText = this.add.text(24, 98, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
-    this.add.text(606, 22, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
+    this.scoreText = this.add.text(MARGIN, this.top + 8, '', { ...label, fontSize: '52px', fontStyle: 'bold', color: '#ffd23f' });
+    this.statsText = this.add.text(MARGIN, this.top + 78, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
+    this.add.text(720 - MARGIN - 86, this.top + 2, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
 
     this.setUpButtons();
+    this.setUpHelpButton();
     this.redraw();
   }
 
   // --- Input ---------------------------------------------------------------
+
+  // Header, board and buttons form one block. The board's cells are as big as the
+  // screen allows, and the block is centred vertically.
+  layout() {
+    const height = this.scale.height;
+    const spare = height - 2 * MARGIN - HEADER_H - 2 * GAP - BUTTON_H;
+    this.cell = Math.floor(Math.min((720 - 2 * MARGIN) / COLS, spare / ROWS));
+    const block = HEADER_H + 2 * GAP + ROWS * this.cell + BUTTON_H;
+    this.top = Math.max(MARGIN, (height - block) / 2);
+    this.boardX = (720 - COLS * this.cell) / 2;
+    this.boardY = this.top + HEADER_H + GAP;
+    this.boardBottom = this.boardY + ROWS * this.cell;
+    this.buttonY = this.boardBottom + GAP + BUTTON_H / 2;
+  }
+
+  setUpHelpButton() {
+    const x = 720 - MARGIN - 172 - 56;
+    const y = this.top + 92;
+    const button = this.add.circle(x, y, 32, 0x2b2d5c).setStrokeStyle(3, 0xe0e2ff).setInteractive({ useHandCursor: true });
+    this.add.text(x, y, '?', { fontFamily: 'sans-serif', fontSize: '40px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+    button.on('pointerup', () => {
+      // Freeze the game while the rules are open.
+      this.scene.pause();
+      openHelp(() => this.scene.resume());
+    });
+  }
 
   setUpButtons() {
     const buttons = [
@@ -50,11 +77,11 @@ export class GameScene extends Phaser.Scene {
       const x = 20 + width / 2 + index * (width + gap);
       const { dark, light } = this.shade(spec.color);
       const bg = this.add
-        .rectangle(x, BUTTON_Y, width, BUTTON_H, dark)
+        .rectangle(x, this.buttonY, width, BUTTON_H, dark)
         .setStrokeStyle(3, spec.color)
         .setInteractive();
       this.add
-        .text(x, BUTTON_Y, spec.label, {
+        .text(x, this.buttonY, spec.label, {
           fontFamily: 'sans-serif',
           fontSize: spec.label.length > 1 ? '32px' : '48px',
           fontStyle: 'bold',
@@ -125,15 +152,15 @@ export class GameScene extends Phaser.Scene {
     if (this.bgLevel !== logic.level) this.drawBackground(logic.level);
 
     // Board background and faint grid, framed in the current piece's colour.
-    g.fillStyle(0x0b0d20, 0.72).fillRect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL);
+    g.fillStyle(0x0b0d20, 0.72).fillRect(this.boardX, this.boardY, COLS * this.cell, ROWS * this.cell);
     g.lineStyle(1, 0xffffff, 0.06);
-    for (let c = 1; c < COLS; c++) g.lineBetween(BOARD_X + c * CELL, BOARD_Y, BOARD_X + c * CELL, BOARD_BOTTOM);
-    for (let r = 1; r < ROWS; r++) g.lineBetween(BOARD_X, BOARD_Y + r * CELL, BOARD_X + COLS * CELL, BOARD_Y + r * CELL);
-    g.lineStyle(10, logic.piece.color, 0.18).strokeRect(BOARD_X - 5, BOARD_Y - 5, COLS * CELL + 10, ROWS * CELL + 10);
-    g.lineStyle(3, logic.piece.color).strokeRect(BOARD_X - 2, BOARD_Y - 2, COLS * CELL + 4, ROWS * CELL + 4);
+    for (let c = 1; c < COLS; c++) g.lineBetween(this.boardX + c * this.cell, this.boardY, this.boardX + c * this.cell, this.boardBottom);
+    for (let r = 1; r < ROWS; r++) g.lineBetween(this.boardX, this.boardY + r * this.cell, this.boardX + COLS * this.cell, this.boardY + r * this.cell);
+    g.lineStyle(10, logic.piece.color, 0.18).strokeRect(this.boardX - 5, this.boardY - 5, COLS * this.cell + 10, ROWS * this.cell + 10);
+    g.lineStyle(3, logic.piece.color).strokeRect(this.boardX - 2, this.boardY - 2, COLS * this.cell + 4, ROWS * this.cell + 4);
 
     logic.board.forEach((row, r) =>
-      row.forEach((color, c) => color && this.drawCell(BOARD_X + c * CELL, BOARD_Y + r * CELL, CELL, color)),
+      row.forEach((color, c) => color && this.drawCell(this.boardX + c * this.cell, this.boardY + r * this.cell, this.cell, color)),
     );
 
     const { piece } = logic;
@@ -141,18 +168,18 @@ export class GameScene extends Phaser.Scene {
     this.eachCell(piece.cells, (r, c) => {
       const y = ghostY + r;
       if (y < 0) return;
-      g.lineStyle(2, piece.color, 0.45).strokeRect(BOARD_X + (piece.x + c) * CELL + 3, BOARD_Y + y * CELL + 3, CELL - 6, CELL - 6);
+      g.lineStyle(2, piece.color, 0.45).strokeRect(this.boardX + (piece.x + c) * this.cell + 3, this.boardY + y * this.cell + 3, this.cell - 6, this.cell - 6);
     });
     this.eachCell(piece.cells, (r, c) => {
       const y = piece.y + r;
       if (y < 0) return;
-      this.drawCell(BOARD_X + (piece.x + c) * CELL, BOARD_Y + y * CELL, CELL, piece.color);
+      this.drawCell(this.boardX + (piece.x + c) * this.cell, this.boardY + y * this.cell, this.cell, piece.color);
     });
 
     // Next piece preview.
     const next = logic.pieceInfo(logic.next);
     const size = 30;
-    const box = { x: 520, y: 60, w: 172, h: 104 };
+    const box = { x: 720 - MARGIN - 172, y: this.top + 40, w: 172, h: 104 };
     g.fillStyle(0x0b0d20, 0.6).fillRoundedRect(box.x, box.y, box.w, box.h, 10);
     g.lineStyle(2, next.color).strokeRoundedRect(box.x, box.y, box.w, box.h, 10);
     const filled = [];
@@ -208,13 +235,13 @@ export class GameScene extends Phaser.Scene {
   // Colourful burst along each cleared row, plus the points scored floating up.
   celebrate(rows, points) {
     for (const row of rows) {
-      const y = BOARD_Y + row * CELL + CELL / 2;
-      const flash = this.add.rectangle(360, y, COLS * CELL, CELL, 0xffffff, 0.85);
+      const y = this.boardY + row * this.cell + this.cell / 2;
+      const flash = this.add.rectangle(360, y, COLS * this.cell, this.cell, 0xffffff, 0.85);
       this.tweens.add({ targets: flash, alpha: 0, scaleY: 0.2, duration: 260, onComplete: () => flash.destroy() });
 
       for (let i = 0; i < 14; i++) {
         const spark = this.add.rectangle(
-          BOARD_X + Phaser.Math.Between(0, COLS * CELL),
+          this.boardX + Phaser.Math.Between(0, COLS * this.cell),
           y,
           14,
           14,
@@ -235,7 +262,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const popup = this.add
-      .text(360, BOARD_Y + rows[0] * CELL, `+${points}`, {
+      .text(360, this.boardY + rows[0] * this.cell, `+${points}`, {
         fontFamily: 'sans-serif',
         fontSize: rows.length >= 4 ? '72px' : '54px',
         fontStyle: 'bold',

@@ -185,22 +185,22 @@ export class GameScene extends Phaser.Scene {
     const result = this.board.resolveSwap(a, b);
 
     if (!result.valid) {
-      // Swap there and back.
+      // Only a swap that makes no match costs a move, so good play can go on forever.
+      this.movesLeft--;
+      this.movesText.setText(String(this.movesLeft));
+      this.tweens.add({ targets: this.movesText, scale: 1.25, duration: 120, yoyo: true });
       await this.swapViews(va, vb, a, b);
       await this.swapViews(va, vb, b, a);
+      if (this.movesLeft <= 0) {
+        this.time.delayedCall(400, () => this.scene.start('GameOver', { score: this.score }));
+        return;
+      }
       this.busy = false;
       this.restartHintTimer();
       return;
     }
 
-    this.movesLeft--;
-    this.movesText.setText(String(this.movesLeft));
     for (const step of result.steps) await this.animate(step, va, vb);
-
-    if (this.movesLeft <= 0) {
-      this.time.delayedCall(500, () => this.scene.start('GameOver', { score: this.score }));
-      return;
-    }
     this.busy = false;
     this.restartHintTimer();
   }

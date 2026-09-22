@@ -2,6 +2,10 @@ import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 
+// Match the canvas to the screen's shape (720 wide, as tall as the screen allows)
+// so the board can use the full height of tall phones.
+const aspect = Math.min(Math.max(window.innerHeight / window.innerWidth, 1.5), 2.4);
+
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
@@ -12,7 +16,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: 720,
-    height: 1280,
+    height: Math.round(720 * aspect),
   },
   input: { activePointers: 3 },
   scene: [GameScene, GameOverScene],
