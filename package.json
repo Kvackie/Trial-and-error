@@ -8,10 +8,12 @@
     "build": "node scripts/build.mjs",
     "hub": "node scripts/build-hub.mjs",
     "android": "node scripts/android.mjs",
-    "new-game": "node scripts/new-game.mjs"
+    "new-game": "node scripts/new-game.mjs",
+    "android:hub": "node scripts/android.mjs --hub"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
     "phaser": "^4.2.1"
   },

@@ -51,6 +51,11 @@ how games here must be built. Read both before starting.
   Android `appId`). Create new games with `npm run new-game -- <game> "Name"`, which also
   adds the game to the workflow dropdown.
 - Namespace anything stored in the browser by game, e.g. the best score key `<game>:best`.
+  All games share one origin inside the all-games hub app, so un-namespaced keys would clash.
+- Call `handleAndroidBack()` from `shared/android-back.js` in `main.js`, so Back works
+  in the APKs (the template already does).
+- Link and load files by relative path (`./…`, as Vite's `base: './'` does). Games run
+  from a sub-folder on the website and inside the hub app.
 - Keep game rules separate from Phaser drawing code where the rules are non-trivial, so
   they can be tested on their own in Node (see `games/*/src/logic.js`).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules
@@ -59,8 +64,8 @@ how games here must be built. Read both before starting.
 ## Building and publishing
 
 - The workflow only runs when started by hand, and builds the game picked in its
-  dropdown, or every game with `all`. APKs are opt-in per run. Don't add automatic
-  triggers.
+  dropdown, or every game with `all`. Per-game APKs and the all-games hub app are
+  opt-in per run. Don't add automatic triggers.
 - There is one pipeline for everything: no separate CI and production setups.
 
 ## Commits

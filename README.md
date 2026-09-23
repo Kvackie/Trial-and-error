@@ -36,6 +36,7 @@ Games import these with `../../../shared/<file>` from their `src/` folder:
 | `shared/screen.js` | `scaleConfig()`: a portrait canvas 720 units wide whose height follows the screen's shape, so the playfield can use the whole phone screen. |
 | `shared/help-dialog.js` | `openHelpDialog()`: the scrollable "How to play" window opened by each game's **?** button. |
 | `shared/game-over-scene.js` | `createGameOverScene('<game>:best')`: score, best score and tap to play again. |
+| `shared/android-back.js` | `handleAndroidBack()`: in the APKs, Android's Back button goes back a page (a game back to the hub in the all-games app) or closes the app. Every game calls it in `main.js`. |
 
 When a second game needs something that already exists in one game, move it into `shared/` instead of copying it.
 
@@ -66,7 +67,10 @@ Only the selected games are built. There is no separate CI and production setup:
 |---|---|---|
 | `web` | builds each selected game (one `web` workflow artifact) | |
 | `android` | only if APKs were requested: builds `<game>.apk` for each game, side by side (workflow artifacts) | publishes each to the game's `<game>-latest` release |
+| `hub-android` | only if the hub app was requested: builds `trial-and-error.apk`, every game in one app (workflow artifact) | publishes it to the `hub-latest` release |
 | `deploy` | | replaces only the built games' folders on the `gh-pages` branch and regenerates the hub page, in one push |
+
+The **hub app** is one Android app that opens on the game list and has every game inside it, playable offline; Back returns from a game to the list. It always contains every game in `games/`, whichever game is picked in the dropdown. Once it has been published, the website hub links to it.
 
 Games that weren't built are never touched on `gh-pages`. The APK's `versionCode` is the workflow run number, so each new build installs over the previous one. `all` is a reserved name, so no game can be called that.
 
@@ -94,6 +98,7 @@ Games that weren't built are never touched on `gh-pages`. The APK's `versionCode
 Requires JDK 21 and the Android SDK.
 
 ```sh
-npm run android -- block-drop
+npm run android -- block-drop    # one game as its own app
+npm run android:hub              # or: every game in one app (built into dist-app/)
 cd android && ./gradlew assembleRelease
 ```

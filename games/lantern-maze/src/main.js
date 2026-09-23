@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene.js';
 import { scaleConfig } from '../../../shared/screen.js';
+import { handleAndroidBack } from '../../../shared/android-back.js';
 
 document.body.style.background = '#000000';
 
@@ -15,3 +16,5 @@ const game = new Phaser.Game({
 
 // Handy for poking at the game from the browser console during development.
 if (import.meta.env.DEV) window.game = game;
+
+handleAndroidBack();

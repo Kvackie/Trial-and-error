@@ -1,10 +1,12 @@
 name: Build and deploy
 
 # Started manually from the Actions tab. Builds the selected game, or every game
-# with "all". On the default branch it also:
+# with "all", plus optionally their APKs and the all-games hub app. On the default
+# branch it also:
 #   - publishes each built game to its own folder on the gh-pages branch (games
 #     that weren't built are left untouched) and regenerates the hub page
 #   - publishes each APK (if requested) to the game's "<game>-latest" release
+#   - publishes the hub app (if requested) to the "hub-latest" release
 run-name: Build ${{ inputs.game }}
 
 on:
@@ -24,6 +26,10 @@ on:
           # games:end
       apk:
         description: Also build the Android APK
+        type: boolean
+        default: false
+      hub_apk:
+        description: Also build the all-games hub app (one APK with every game)
         type: boolean
         default: false
 
@@ -141,12 +147,72 @@ jobs:
             --title "$GAME (build #${{ github.run_number }})" \
             --notes "Built from ${GITHUB_SHA::7}. Download $GAME.apk and open it on your Android device to install."
 
+  # Every game in one app that opens on the hub page. Builds all games itself,
+  # whichever game was picked above.
+  hub-android:
+    if: inputs.hub_apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+      - run: npm run android:hub
+
+      - name: Decode signing keystore
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/trial-and-error.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trial-and-error-apk
+          path: trial-and-error.apk
+
+      - name: Publish to "hub-latest" release
+        if: env.IS_DEFAULT_BRANCH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete hub-latest --yes --cleanup-tag || true
+          gh release create hub-latest trial-and-error.apk \
+            --target "$GITHUB_SHA" \
+            --title "All games (build #${{ github.run_number }})" \
+            --notes "Every game in one app, built from ${GITHUB_SHA::7}. Download trial-and-error.apk and open it on your Android device to install."
+
   deploy:
-    needs: [web, android]
-    # Runs when every APK succeeded or none were requested, so the hub never links a missing APK.
+    needs: [web, android, hub-android]
+    # Runs when every requested APK succeeded, so the hub never links a missing APK.
     if: >-
       !cancelled() && github.ref_name == github.event.repository.default_branch &&
-      needs.web.result == 'success' && needs.android.result != 'failure'
+      needs.web.result == 'success' && needs.android.result != 'failure' &&
+      needs.hub-android.result != 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -189,6 +255,12 @@ jobs:
               '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$game/build.json"
           done
           touch site/.nojekyll
+
+      - name: Note the hub app
+        if: needs.hub-android.result == 'success'
+        run: |
+          jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" \
+            '{sha: $sha, builtAt: $at, apk: true}' > site/app.json
 
       - name: Regenerate hub page
         run: node scripts/build-hub.mjs site

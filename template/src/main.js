@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { scaleConfig } from '../../../shared/screen.js';
+import { handleAndroidBack } from '../../../shared/android-back.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -32,3 +33,5 @@ new Phaser.Game({
   scale: scaleConfig(),
   scene: [MainScene],
 });
+
+handleAndroidBack();
