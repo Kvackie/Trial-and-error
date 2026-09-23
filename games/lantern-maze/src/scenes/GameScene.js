@@ -17,6 +17,12 @@ const IVORY_CSS = '#f5f1e6';
 const MUTED_CSS = '#8a847a';
 const SERIF = 'Georgia, "Times New Roman", serif';
 const DIALOG_THEME = { accent: GOLD_CSS, heading: GOLD_CSS, panel: '#0d0b09' };
+// Puzzle feedback after a wrong answer: your pick in red, the right answer in green.
+const WRONG = 0xb3261e;
+const WRONG_EDGE = 0xff6b5e;
+const RIGHT = 0x2e7d32;
+const RIGHT_EDGE = 0x7ee07f;
+const REVEAL_MS = 2000;
 
 const CELL = 100; // world units per maze square
 const HUD_H = 150;
@@ -552,14 +558,18 @@ export class GameScene extends Phaser.Scene {
           this.modal = false;
         });
       } else {
-        bg.setFillStyle(0x7a2e12);
-        buttons.find((_, j) => puzzle.options[j] === puzzle.answer).bg.setStrokeStyle(4, GOLD);
+        // Wrong pick in red, the right answer in green, for a couple of seconds.
+        bg.setFillStyle(WRONG).setStrokeStyle(4, WRONG_EDGE);
+        label.setColor('#ffffff');
+        const right = buttons.find((_, j) => puzzle.options[j] === puzzle.answer);
+        right.bg.setFillStyle(RIGHT).setStrokeStyle(4, RIGHT_EDGE);
+        right.label.setColor('#ffffff');
         this.cameras.main.shake(160, 0.006);
         this.progress.lives--;
         saveProgress(this.progress);
         this.updateHud();
         lives.setText(`${'♥'.repeat(this.progress.lives)}${'♡'.repeat(MAX_LIVES - this.progress.lives)}`);
-        this.time.delayedCall(900, () => {
+        this.time.delayedCall(REVEAL_MS, () => {
           if (this.progress.lives <= 0) {
             this.keyTarget = null;
             overlay.destroy();
