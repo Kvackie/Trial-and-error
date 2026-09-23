@@ -6,6 +6,10 @@
 //   addTrophyButton(scene, x, y, opts)        round trophy button (or [] if disabled)
 //   openLeaderboard({ game, unit, myBest, theme, onClose })
 //   promptSubmit({ game, score, unit, theme, onClose })   "new best, add it?"
+//
+// The same service also holds other shared game data (see leaderboard/src/):
+//   apiGet(path), apiPost(path, body)   JSON requests; throw when offline or refused
+//   getName(), askName({ theme, onDone })   the player's nickname, asking once if unset
 import { showPanel } from './help-dialog.js';
 import { t } from './i18n.js';
 import { playSound } from './sound.js';
@@ -33,7 +37,7 @@ const write = (key, value) => {
   }
 };
 
-function clientId() {
+export function clientId() {
   let id = read(KEY.client);
   if (!id) {
     id = crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -96,6 +100,26 @@ if (leaderboardEnabled && typeof window !== 'undefined') {
   window.addEventListener('online', flushQueue);
   setTimeout(flushQueue, 3000);
 }
+
+export async function apiGet(path) {
+  const response = await fetch(`${BASE}${path}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+// Adds the device id to the body. Throws with .status set when refused.
+export async function apiPost(path, body) {
+  const response = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, client: clientId() }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(data.error ?? `HTTP ${response.status}`), { status: response.status });
+  return data;
+}
+
+export const getName = () => read(KEY.name);
 
 // --- Dialogs ---------------------------------------------------------------------
 
@@ -186,6 +210,46 @@ export function promptSubmit({ game, score, unit = t('unit.score'), theme = {}, 
 
   submit.addEventListener('click', send);
   field.addEventListener('keydown', (event) => event.key === 'Enter' && send());
+  overlay.querySelector('.help-cancel').addEventListener('click', close);
+}
+
+// Asks for a nickname (once: it's remembered for every game). onDone(name), or
+// onDone(null) when the player says not now.
+export function askName({ theme = {}, onDone }) {
+  const saved = getName();
+  if (saved) {
+    onDone(saved);
+    return;
+  }
+  let name = null;
+  const { overlay, close } = showPanel({
+    ...theme,
+    title: t('lb.whoAreYou'),
+    closeButton: false,
+    onClose: () => onDone(name),
+    html: `<p>${t('lb.nameWhy')}</p>
+      <label for="lb-name">${t('lb.name')}</label>
+      <input id="lb-name" class="help-field" maxlength="12" autocomplete="nickname" enterkeyhint="done" />
+      <p class="help-status" aria-live="polite"></p>
+      <div class="help-actions">
+        <button class="help-cancel">${t('lb.notNow')}</button>
+        <button class="help-danger">${t('lb.save')}</button>
+      </div>`,
+  });
+  const field = overlay.querySelector('#lb-name');
+  field.focus();
+  const save = () => {
+    const value = field.value.trim().replace(/\s+/g, ' ');
+    if (!NAME.test(value)) {
+      overlay.querySelector('.help-status').textContent = t('lb.badName');
+      return;
+    }
+    write(KEY.name, value);
+    name = value;
+    close();
+  };
+  overlay.querySelector('.help-danger').addEventListener('click', save);
+  field.addEventListener('keydown', (event) => event.key === 'Enter' && save());
   overlay.querySelector('.help-cancel').addEventListener('click', close);
 }
 

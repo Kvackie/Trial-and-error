@@ -106,6 +106,10 @@ export const t = makeT({
     'lb.tooMany': 'Too many scores at once. Wait a moment and try again.',
     'lb.rejected': 'That score couldn’t be accepted.',
     'lb.unavailable': 'The leaderboard is unavailable right now.',
+    'lb.whoAreYou': 'Pick a name',
+    'lb.nameWhy': 'Other players will see this name next to what you share. It’s used in every game.',
+    'lb.save': 'Save',
+    'net.offline': 'You’re offline right now. Try again when you’re connected.',
   },
   sv: {
     'gameOver.title': 'Spelet är slut',
@@ -141,5 +145,9 @@ export const t = makeT({
     'lb.tooMany': 'För många resultat på en gång. Vänta en stund och försök igen.',
     'lb.rejected': 'Det resultatet kunde inte godkännas.',
     'lb.unavailable': 'Topplistan är inte tillgänglig just nu.',
+    'lb.whoAreYou': 'Välj ett namn',
+    'lb.nameWhy': 'Andra spelare ser det här namnet bredvid det du delar. Det används i alla spel.',
+    'lb.save': 'Spara',
+    'net.offline': 'Du är offline just nu. Försök igen när du är uppkopplad.',
   },
 });

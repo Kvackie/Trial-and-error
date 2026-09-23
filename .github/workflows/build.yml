@@ -22,7 +22,9 @@ on:
           # games:start
           - block-drop
           - lantern-maze
+          - potion-market
           - potion-match
+          - wild-pond
           # games:end
       apk:
         description: Also build the Android APK

@@ -1,7 +1,19 @@
-// Leaderboard service.
+// Online service for the games.
 //   GET  /scores?game=<game>&limit=<n>     top scores, best first
 //   POST /scores  { game, name, score, client }   submit a score; returns its rank
+//   /discoveries, /pond…, /market…         see discoveries.js, pond.js, market.js
 import { GAMES, KEEP_PER_GAME, MAX_PER_HOUR, MIN_SECONDS_BETWEEN, TOP_LIMIT, allowedOrigin, validateSubmission } from './rules.js';
+import { hashAddress } from './limits.js';
+import { discoveries } from './discoveries.js';
+import { pond } from './pond.js';
+import { market } from './market.js';
+
+// Other routes, by the first part of the path.
+const ROUTES = {
+  discoveries: (request, env, url, reply) => discoveries(request, env.DB, url, reply),
+  pond: (request, env, url, reply) => pond(request, env.DB, url.pathname, reply),
+  market: (request, env, url, reply) => market(request, env.DB, url.pathname, reply),
+};
 
 export default {
   async fetch(request, env) {
@@ -14,9 +26,14 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: origin ? 204 : 403, headers: cors });
     const url = new URL(request.url);
-    if (url.pathname !== '/scores') return reply(404, { error: 'Not found.' });
+    const route = ROUTES[url.pathname.split('/')[1]];
+    if (url.pathname !== '/scores' && !route) return reply(404, { error: 'Not found.' });
 
     try {
+      if (route) {
+        if (request.method === 'POST' && !origin) return reply(403, { error: 'Not allowed from this site.' });
+        return await route(request, env, url, reply);
+      }
       if (request.method === 'GET') return reply(200, await top(env.DB, url));
       if (request.method === 'POST') {
         if (!origin) return reply(403, { error: 'Not allowed from this site.' });
@@ -52,7 +69,7 @@ async function submit(db, request, reply) {
   if (error) return reply(400, { error });
 
   const now = Math.floor(Date.now() / 1000);
-  const address = await hash(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const address = await hashAddress(request);
   const [device, network] = await db.batch([
     db.prepare('SELECT COUNT(*) AS n FROM recent WHERE key = ? AND at > ?').bind(`c:${entry.client}`, now - MIN_SECONDS_BETWEEN),
     db.prepare('SELECT COUNT(*) AS n FROM recent WHERE key = ? AND at > ?').bind(`a:${address}`, now - 3600),
@@ -77,11 +94,4 @@ async function submit(db, request, reply) {
     .all();
   const rank = results[0].rank;
   return reply(201, { rank: rank <= KEEP_PER_GAME ? rank : null });
-}
-
-// Network addresses are only kept as a salted hash, for an hour, for rate limiting.
-async function hash(value) {
-  const bytes = new TextEncoder().encode(`trial-and-error:${value}`);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
 }

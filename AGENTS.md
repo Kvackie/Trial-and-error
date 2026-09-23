@@ -74,6 +74,12 @@ how games here must be built. Read both before starting.
   `shared/leaderboard.js`: a trophy button in the header and a submit prompt on a new
   best. Register the game in `leaderboard/src/rules.js`. Store nothing about players
   beyond a nickname and a random device id.
+- Games that share data between players (like Wild Pond and Potion Market) add routes
+  to the same service in `leaderboard/src/`, one file per game, and keep their checks in
+  the game's own rules files so the game and the service agree. Keep writes to a few
+  database rows per player action, rate-limit them with `leaderboard/src/limits.js`,
+  and make the game still playable offline. No free text from players beyond the
+  nickname.
 - **Every piece of text exists in English and Swedish.** Put a game's strings in its
   `src/strings.js` via `makeT()` from `shared/i18n.js`, write its help dialog in both
   languages, and fill in the `sv` block in `game.json`. Text must follow a language
@@ -85,7 +91,8 @@ how games here must be built. Read both before starting.
   browser tab icon.
 - Keep game rules separate from Phaser drawing code where the rules are non-trivial, so
   they can be tested on their own in Node (e.g. `block-drop/src/logic.js`,
-  `lantern-maze/src/maze.js` and `puzzles.js`).
+  `lantern-maze/src/maze.js` and `puzzles.js`), with tests in the game's `test/` folder
+  (`npm test` runs them all).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules
   change.
 

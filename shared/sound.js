@@ -144,6 +144,27 @@ const SOUNDS = {
   wrong: () => tone(220, { dur: 0.3, type: 'sawtooth', gain: 0.12, to: 150 }),
   levelUp: () => notes([523, 659, 784, 1047], { gap: 0.09, dur: 0.18, type: 'triangle', gain: 0.22 }),
   checkpoint: () => notes([392, 523, 659, 784], { gap: 0.12, dur: 0.25, gain: 0.2 }),
+  // Creatures
+  hatch: () => {
+    noise({ dur: 0.06, gain: 0.2, filter: 'highpass', freq: 2500 });
+    notes([784, 1047, 1319], { at: 0.06, gap: 0.06, dur: 0.1, gain: 0.18 });
+  },
+  splash: () => {
+    noise({ dur: 0.35, gain: 0.3, filter: 'bandpass', freq: 900 });
+    tone(300, { dur: 0.2, gain: 0.12, to: 120 });
+  },
+  catch: () => {
+    noise({ dur: 0.2, gain: 0.2, filter: 'bandpass', freq: 1400 });
+    notes([523, 784], { at: 0.12, gap: 0.08, dur: 0.12, type: 'triangle', gain: 0.2 });
+  },
+  discover: () => notes([784, 988, 1175, 1568, 1976], { gap: 0.08, dur: 0.2, type: 'triangle', gain: 0.2 }),
+  // Shop
+  bubble: () => tone(300 + Math.random() * 200, { dur: 0.12, gain: 0.18, to: 700 + Math.random() * 300 }),
+  brew: () => {
+    noise({ dur: 0.5, gain: 0.15, filter: 'bandpass', freq: 600 });
+    notes([392, 523, 659, 784], { at: 0.2, gap: 0.07, dur: 0.14, gain: 0.18 });
+  },
+  coin: () => notes([1319, 1760], { gap: 0.06, dur: 0.12, type: 'square', gain: 0.07 }),
 };
 
 export function playSound(name, params) {

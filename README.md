@@ -14,6 +14,8 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Block Drop (Blockfall) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
 | Potion Match (Trolldrycker) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
 | Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
+| Wild Pond (Vilda dammen) | `games/wild-pond/` | Breed drawn-in-code pond creatures to discover rare features, and trade them with other players through a shared online pond. |
+| Potion Market (Trolldrycksmarknaden) | `games/potion-market/` | Brew potions by balancing five essences (art and recipes from Eternal Alchemy) and sell them on a market shared by every player. |
 
 Every game has the same frame around it:
 
@@ -31,7 +33,7 @@ Every game has the same frame around it:
 ```
 games/<game>/      one folder per game: index.html, src/, public/, game.json
 template/          starting point copied by `npm run new-game`
-leaderboard/       global leaderboard service (Cloudflare Worker + D1 database)
+leaderboard/       online service: leaderboard, shared pond and market (Cloudflare Worker + D1 database)
 shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
@@ -55,7 +57,9 @@ Games import these with `../../../shared/<file>` from their `src/` folder:
 | `shared/settings.js` | `addSettingsButton()`: the gear button opening Settings with the language flags, sound on/off and volume. |
 | `shared/sound.js` | `playSound(name)`: sound effects synthesised with Web Audio (no audio files), respecting the volume and mute settings. |
 | `shared/flags.js` | The 🇬🇧 / 🇸🇪 flags as inline SVG, for the settings dialog and the hub. |
-| `shared/leaderboard.js` | The global leaderboard: `addTrophyButton()`, `openLeaderboard()` and `promptSubmit()`. Hidden when a build has no leaderboard address. |
+| `shared/leaderboard.js` | The global leaderboard: `addTrophyButton()`, `openLeaderboard()` and `promptSubmit()`. Hidden when a build has no leaderboard address. Also `apiGet()` / `apiPost()` for a game's own online data, and `askName()` for the player's nickname (asked once, shared by every game). |
+| `shared/focus.js` | `addFocus()`: a keyboard frame for games played by tapping things on screen: W A S D move it between rows of targets, Space taps. |
+| `shared/toast.js` | `showToast()`: a short message that floats up and fades out. |
 | `shared/home-button.js` | `addHomeButton()`: the round Home button at the top left of every game. Back to the hub on the website and in the all-games app; closes a single-game APK. |
 | `shared/android-back.js` | `handleAndroidBack()`: in the APKs, Android's Back button goes back a page (a game back to the hub in the all-games app) or closes the app. Every game calls it in `main.js`. |
 
@@ -139,14 +143,32 @@ All text exists in English and Swedish.
 license or download. Games call `playSound('name')`; the available names are listed in `SOUNDS` in that
 file (general: `click`, `gameOver`; pieces: `move`, `rotate`, `drop`, `clear`; matching: `select`,
 `swap`, `invalid`, `match`, `special`, `blast`, `shuffle`; exploring: `step`, `bump`, `chest`, `correct`,
-`wrong`, `levelUp`, `checkpoint`). Add new sounds there rather than in a game. Volume and mute come from
+`wrong`, `levelUp`, `checkpoint`; creatures: `hatch`, `splash`, `catch`, `discover`; shop: `bubble`,
+`brew`, `coin`). Add new sounds there rather than in a game. Volume and mute come from
 Settings and apply to every game.
 
-## Leaderboard
+## Leaderboard and online play
 
 A global top-scores list per game, reached from the trophy button in each game. A new
 best offers to go on it under a nickname (remembered on the device). Offline scores in
 the APKs are sent when the device is back online.
+
+The same service holds the data the online games share:
+
+- **Wild Pond:** creatures released into the shared pond (genes, nickname, device id; the
+  oldest go once there are 400), fished out by other players.
+- **Potion Market:** one "selling pressure" number per potion, which lowers its price for
+  everyone and halves every 6 hours. The daily hot potion and the merchant's stock are
+  worked out from the date, so they need no storage.
+- **First finds:** the first nickname to find each rare Wild Pond feature or brew each
+  Potion Market recipe.
+
+The rules those routes check (possible genes, prices) are the games' own files
+(`games/wild-pond/src/genes.js`, `games/potion-market/src/economy.js`), imported by the
+Worker. Every write is rate-limited per device and per network, and each costs only a
+few database rows, so the service stays well inside Cloudflare's free plan. Without the
+service (a local build, or offline), Wild Pond catches wild creatures and Potion Market
+uses a market kept on the device.
 
 - **Service:** `leaderboard/` is a Cloudflare Worker with a D1 database. It accepts scores
   only from the published site, the Android apps and local development, rejects
@@ -172,3 +194,4 @@ the APKs are sent when the device is back online.
   # in another terminal, from the repo root:
   VITE_LEADERBOARD_URL=http://127.0.0.1:8787 npm run dev -- block-drop
   ```
+- **Game rules tests:** `npm test` from the repo root runs the Node tests in `games/*/test/`.
