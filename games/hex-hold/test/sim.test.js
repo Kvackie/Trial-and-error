@@ -32,7 +32,7 @@ test('every island has a grass start, wood and stone nearby, and three dungeons'
   }
 });
 
-test('building takes time and then produces, joined by a road', () => {
+test('building takes time and then produces', () => {
   const state = newGame(7);
   const spot = [...state.tiles.values()].find((t) => !buildProblem(state, 'farm', t.q, t.r) && distance([t.q, t.r], [0, 0]) === 2);
   assert.ok(spot, 'somewhere to farm');
@@ -41,7 +41,6 @@ test('building takes time and then produces, joined by a road', () => {
   run(state, 13);
   assert.equal(farm.state, 'ready');
   assert.ok(rates(state).food > 0);
-  assert.ok(state.roads.size > 0);
   const food = state.res.food;
   run(state, 10);
   assert.ok(state.res.food > food);
@@ -65,6 +64,11 @@ test('the first wave comes after ten minutes of play, and trained knights fight 
   assert.ok(state.monsters.length >= 3);
   const later = run(state, 120);
   assert.ok(later.some((e) => e.type === 'monsterDied'), 'monsters die');
+  // Nobody is left standing between two hexes.
+  for (const a of [...state.units, ...state.monsters].filter((x) => !x.path.length)) {
+    const c = toWorld(...fromWorld(a.x, a.z));
+    assert.ok(Math.hypot(a.x - c.x, a.z - c.z) < 0.01, `${a.type} at ${a.x},${a.z}`);
+  }
 });
 
 test('dungeon runs come back after their time, with loot on a win', () => {

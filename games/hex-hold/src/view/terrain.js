@@ -1,7 +1,7 @@
 // The island: tiles, nature on them, dungeon doorways and the dark over unexplored hexes.
 // Everything that repeats is drawn with instancing, so hundreds of hexes stay cheap.
 import * as THREE from 'three';
-import { DIRS, key, toWorld } from '../hex.js';
+import { key, toWorld } from '../hex.js';
 import { buildingAt } from '../sim.js';
 import { source } from './assets.js';
 
@@ -48,12 +48,9 @@ export class Terrain {
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -0.35;
     scene.add(sea);
-    this.roadMaterial = new THREE.MeshStandardMaterial({ color: 0xc2a574, roughness: 1 });
-    this.roadPiece = new THREE.BoxGeometry(0.42, 0.04, 1.02).translate(0, 0.02, 0.51);
-    this.roadHub = new THREE.CylinderGeometry(0.24, 0.24, 0.04, 12).translate(0, 0.02, 0);
   }
 
-  // Rebuilds everything. Called when the fog lifts, a forest is cleared or a road appears.
+  // Rebuilds everything. Called when the fog lifts or a building goes up.
   update(state) {
     for (const child of [...this.group.children]) {
       child.traverse((o) => o.isInstancedMesh && o.dispose());
@@ -72,7 +69,7 @@ export class Terrain {
       const h = hash(k);
       const turn = ((h % 6) * Math.PI) / 3;
       add(tile.terrain === 'water' ? 'hex_water' : 'hex_grass', place(x, 0, z));
-      if (buildingAt(state, tile.q, tile.r) || state.roads.has(k)) continue;
+      if (buildingAt(state, tile.q, tile.r)) continue;
       if (tile.dungeon) {
         this.dungeon(add, x, z);
         continue;
@@ -88,7 +85,6 @@ export class Terrain {
     }
     for (const [name, matrices] of byModel) this.group.add(instanced(name, matrices, name === 'hex_grass' ? this.grassMaterial() : undefined));
     this.group.add(instanced('hex_grass', hidden, this.fogMaterial));
-    this.roads(state);
   }
 
   // The pack's grass is a bright lime; a touch greener reads better across a whole island.
@@ -111,34 +107,5 @@ export class Terrain {
     add('torch_mounted', place(x + 0.55, 0.45, z + 0.3, 0, 0.5));
     add('barrel_small_stack', place(x + 0.55, 0, z - 0.45, 0.6, 0.3));
     add('banner_patternA_red', place(x, 0, z + 0.05, 0, 0.3));
-  }
-
-  // Dirt roads: from the middle of each road hex towards its road and building neighbours.
-  roads(state) {
-    const pieces = [];
-    const hubs = [];
-    const joined = (q, r) => state.roads.has(key(q, r)) || !!buildingAt(state, q, r);
-    for (const k of state.roads) {
-      const [q, r] = k.split(',').map(Number);
-      const { x, z } = toWorld(q, r);
-      hubs.push(place(x, 0, z));
-      DIRS.forEach(([dq, dr]) => {
-        if (!joined(q + dq, r + dr)) return;
-        const to = toWorld(q + dq, r + dr);
-        const angle = Math.atan2(to.x - x, to.z - z);
-        pieces.push(place(x, 0, z, angle));
-        // Buildings get the other half of the road, up to their door.
-        if (!state.roads.has(key(q + dq, r + dr))) pieces.push(place(to.x, 0, to.z, angle + Math.PI, 0.55));
-      });
-    }
-    const add = (geometry, matrices) => {
-      if (!matrices.length) return;
-      const mesh = new THREE.InstancedMesh(geometry, this.roadMaterial, matrices.length);
-      matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
-      mesh.receiveShadow = true;
-      this.group.add(mesh);
-    };
-    add(this.roadPiece, pieces);
-    add(this.roadHub, hubs);
   }
 }

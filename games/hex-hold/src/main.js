@@ -356,7 +356,7 @@ function frame() {
     const events = sim.tick(state, dt);
     if (events.length) react(events, now);
   }
-  const signature = `${state.revealed.size}|${state.roads.size}|${state.buildings.length}|${state.buildings.filter((b) => b.state === 'ready').length}`;
+  const signature = `${state.revealed.size}|${state.buildings.length}|${state.buildings.filter((b) => b.state === 'ready').length}`;
   if (signature !== terrainKey) {
     terrainKey = signature;
     terrain.update(state);

@@ -42,7 +42,6 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
     res: { ...START_RESOURCES },
     tiles,
     revealed: new Set(),
-    roads: new Set(),
     buildings: [],
     units: [],
     monsters: [],
@@ -64,7 +63,6 @@ export function serialise(state) {
     units: state.units.map((u) => ({ ...u, target: null })),
     monsters: state.monsters.map((m) => ({ ...m, target: null })),
     revealed: [...state.revealed],
-    roads: [...state.roads],
     shots: [],
     cleared: [...state.tiles.values()].filter((t) => t.cleared).map((t) => key(t.q, t.r)),
   });
@@ -79,7 +77,8 @@ export function deserialise(text) {
   }
   delete saved.cleared;
   for (const a of [...saved.units, ...saved.monsters]) a.target = null;
-  return { ...saved, tiles, revealed: new Set(saved.revealed), roads: new Set(saved.roads), shots: [] };
+  delete saved.roads; // older saves had roads
+  return { ...saved, tiles, revealed: new Set(saved.revealed), shots: [] };
 }
 
 // --- Queries ----------------------------------------------------------------------------
@@ -161,7 +160,6 @@ export function build(state, type, q, r) {
     tile.terrain = 'grass';
     tile.cleared = true;
   }
-  state.roads.delete(key(q, r));
   return addBuilding(state, type, q, r);
 }
 
@@ -206,11 +204,7 @@ export function train(state, b, unit) {
   return true;
 }
 
-const passCost = (state) => (q, r) => {
-  const tile = tileAt(state, q, r);
-  if (!isPassable(tile)) return Infinity;
-  return state.roads.has(key(q, r)) ? 0.7 : 1;
-};
+const passCost = (state) => (q, r) => (isPassable(tileAt(state, q, r)) ? 1 : Infinity);
 
 // Orders units to walk to a hex (they fight whatever they meet on the way).
 export function moveUnits(state, ids, q, r) {
@@ -270,25 +264,10 @@ export function reveal(state, q, r, radius) {
 function spawnUnit(state, b, type, events) {
   const spot = [[b.q, b.r], ...spiral(b.q, b.r, 2)].find(([q, r]) => isPassable(tileAt(state, q, r)) && !buildingAt(state, q, r)) ?? [b.q, b.r];
   const { x, z } = toWorld(...spot);
-  const u = { id: state.nextId++, type, x: x + (Math.random() - 0.5) * 0.6, z: z + (Math.random() - 0.5) * 0.6, hp: UNITS[type].hp, state: 'idle', path: [], cooldown: 0, target: null };
+  const u = { id: state.nextId++, type, x, z, hp: UNITS[type].hp, state: 'idle', path: [], cooldown: 0, target: null };
   state.units.push(u);
   events.push({ type: 'trained', unit: u });
   return u;
-}
-
-// Joins a finished building to the road network: a path of road hexes to the nearest other building.
-function connectRoad(state, b) {
-  const others = state.buildings.filter((o) => o !== b && o.state !== 'destroyed');
-  if (!others.length) return;
-  const nearest = others.reduce((best, o) => (distance([o.q, o.r], [b.q, b.r]) < distance([best.q, best.r], [b.q, b.r]) ? o : best));
-  const cost = (q, r) => {
-    const tile = tileAt(state, q, r);
-    if (!isPassable(tile) || tile.dungeon) return Infinity;
-    if (buildingAt(state, q, r)) return 0.5;
-    return state.roads.has(key(q, r)) ? 0.3 : tile.terrain === 'forest' ? 1.6 : 1;
-  };
-  const path = findPath([b.q, b.r], [nearest.q, nearest.r], cost);
-  for (const [q, r] of path ?? []) if (!buildingAt(state, q, r)) state.roads.add(key(q, r));
 }
 
 function economy(state, dt, events) {
@@ -305,7 +284,6 @@ function economy(state, dt, events) {
         b.left = 0;
         b.hp = BUILDINGS[b.type].hp * b.level;
         events.push({ type: fresh ? 'built' : 'upgraded', building: b });
-        if (fresh) connectRoad(state, b);
         if (BUILDINGS[b.type].reveal) reveal(state, b.q, b.r, BUILDINGS[b.type].reveal);
         else reveal(state, b.q, b.r, 2);
       }
@@ -349,8 +327,8 @@ function finishDungeon(state, d, events, rng = Math.random) {
     }
     u.state = 'idle';
     u.hp = won ? UNITS[u.type].hp : Math.ceil(UNITS[u.type].hp * 0.3);
-    u.x = exit.x + (rng() - 0.5) * 1.2;
-    u.z = exit.z + 1 + rng() * 0.6;
+    u.x = exit.x;
+    u.z = exit.z;
   }
   state.units = state.units.filter((u) => !lost.includes(u));
   let loot = null;
@@ -381,7 +359,7 @@ function spawnWave(state, events) {
     const t = spots[i % spots.length];
     const { x, z } = toWorld(t.q, t.r);
     const hp = Math.round(MONSTERS[type].hp * strength);
-    state.monsters.push({ id: state.nextId++, type, x: x + (Math.random() - 0.5) * 0.8, z: z + (Math.random() - 0.5) * 0.8, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength });
+    state.monsters.push({ id: state.nextId++, type, x, z, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength });
   });
   reveal(state, start.q, start.r, 1);
   events.push({ type: 'wave', number: n, at: [start.q, start.r] });
@@ -391,16 +369,27 @@ const hexOf = (a) => fromWorld(a.x, a.z);
 const hexDist = (a, b) => distance(hexOf(a), hexOf(b));
 const worldDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / 2; // in hexes
 
-// Moves an actor along its path. Returns true while it is still walking.
-function walk(state, actor, speed, dt) {
+// Actors stand in the middle of hexes; these help them finish a step before stopping.
+const centreOf = (a) => toWorld(...hexOf(a));
+const atCentre = (a) => {
+  const c = centreOf(a);
+  return Math.hypot(a.x - c.x, a.z - c.z) < 0.01;
+};
+function settle(a, speed, dt) {
+  // Keep going to the hex it was heading for, or back to the nearest middle.
+  a.path = a.path.length ? a.path.slice(0, 1) : [hexOf(a)];
+  walk(null, a, speed, dt);
+}
+
+// Moves an actor along its path, from hex middle to hex middle. Returns true while it is still walking.
+function walk(_state, actor, speed, dt) {
   if (!actor.path.length) return false;
   const [q, r] = actor.path[0];
   const goal = toWorld(q, r);
   const dx = goal.x - actor.x;
   const dz = goal.z - actor.z;
   const len = Math.hypot(dx, dz);
-  const onRoad = state.roads.has(key(...hexOf(actor))) ? 1.3 : 1;
-  const step = speed * 2 * onRoad * dt;
+  const step = speed * 2 * dt;
   actor.heading = Math.atan2(dx, dz);
   if (len <= step) {
     actor.x = goal.x;
@@ -450,11 +439,15 @@ function combat(state, dt, events) {
       const b = buildingTargets.reduce((best, o) => (distance([o.q, o.r], hexOf(m)) < distance([best.q, best.r], hexOf(m)) ? o : best));
       target = { kind: 'building', ref: b };
     }
-    if (!target) continue;
-    const pos = target.kind === 'unit' ? target.ref : toWorld(target.ref.q, target.ref.r);
-    const reach = target.kind === 'unit' ? def.range * 0.6 : 1.05;
-    if (worldDist(m, pos) <= reach) {
+    if (!target) {
+      settle(m, def.speed, dt);
+      continue;
+    }
+    const goal = target.kind === 'unit' ? hexOf(target.ref) : [target.ref.q, target.ref.r];
+    const inReach = distance(hexOf(m), goal) <= (target.kind === 'unit' ? def.range : 1);
+    if (inReach && atCentre(m)) {
       m.path = [];
+      const pos = toWorld(...goal);
       m.heading = Math.atan2(pos.x - m.x, pos.z - m.z);
       if (m.cooldown <= 0) {
         m.cooldown = ATTACK_COOLDOWN * 1.3;
@@ -463,24 +456,23 @@ function combat(state, dt, events) {
         if (target.kind === 'unit') hurtUnit(state, target.ref, dmg, events);
         else damageBuilding(state, target.ref, dmg, events);
       }
+    } else if (inReach) {
+      settle(m, def.speed, dt);
     } else {
-      const goal = target.kind === 'unit' ? hexOf(target.ref) : [target.ref.q, target.ref.r];
       const last = m.path.at(-1);
-      if (!last || last[0] !== goal[0] || last[1] !== goal[1] || m.repath <= 0) {
+      if ((!last || m.repath <= 0) && atCentre(m)) {
         m.path = findPath(hexOf(m), goal, passCost(state), 800) ?? [];
         m.repath = 1.5;
         if (target.kind === 'building' && m.path.length) m.path.pop(); // stop next to it
-        if (!m.path.length) {
-          // Already next to the hex: step straight towards it.
-          m.path = [goal];
-        }
       }
       m.repath -= dt;
-      walk(state, m, def.speed, dt);
+      if (m.path.length) walk(state, m, def.speed, dt);
+      else settle(m, def.speed, dt);
     }
   }
 
-  // Units: follow orders; when free, fight monsters that come close.
+  // Units: follow orders; when free, fight monsters that come close. Like monsters,
+  // they only ever stop in the middle of a hex.
   for (const u of state.units) {
     if (u.state === 'away' || !alive(u)) continue;
     const def = UNITS[u.type];
@@ -491,9 +483,14 @@ function combat(state, dt, events) {
       foe = monsters.filter((m) => worldDist(m, u) <= AGGRO_RANGE).sort((a, b) => worldDist(a, u) - worldDist(b, u))[0] ?? null;
     }
     u.target = foe;
-    if (foe && worldDist(foe, u) <= def.range * 0.8 + 0.2) {
+    const inReach = foe && distance(hexOf(u), hexOf(foe)) <= def.range;
+    if (foe && inReach && !u.order) {
+      if (!atCentre(u)) {
+        u.state = 'moving';
+        settle(u, def.speed, dt);
+        continue;
+      }
       u.path = [];
-      u.order = false;
       u.state = 'fighting';
       u.heading = Math.atan2(foe.x - u.x, foe.z - u.z);
       if (u.cooldown <= 0) {
@@ -507,17 +504,20 @@ function combat(state, dt, events) {
       }
     } else if (foe && !u.order) {
       u.state = 'moving';
-      if (!u.path.length || u.repath <= 0) {
+      if ((!u.path.length || u.repath <= 0) && atCentre(u)) {
         u.path = findPath(hexOf(u), hexOf(foe), passCost(state), 600) ?? [];
-        if (!u.path.length) u.path = [hexOf(foe)];
         u.repath = 1;
       }
       u.repath -= dt;
-      walk(state, u, def.speed, dt);
+      if (u.path.length) walk(state, u, def.speed, dt);
+      else settle(u, def.speed, dt);
     } else if (u.path.length) {
       u.state = 'moving';
       walk(state, u, def.speed, dt);
       if (!u.path.length) u.order = false;
+    } else if (!atCentre(u)) {
+      u.state = 'moving';
+      settle(u, def.speed, dt);
     } else {
       u.state = 'idle';
     }

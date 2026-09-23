@@ -180,7 +180,7 @@ export class Actors {
     for (const u of state.units) {
       const view = this.units.get(u.id);
       if (!view || !view.group.visible) continue;
-      v.set(u.x, 0.45, u.z).project(camera);
+      v.set(view.group.position.x, 0.45, view.group.position.z).project(camera);
       const d = Math.hypot(((v.x + 1) / 2) * width - x, ((1 - v.y) / 2) * height - y);
       if (d < bestD) [best, bestD] = [u, d];
     }
@@ -218,7 +218,33 @@ export class Actors {
     }
   }
 
+  // Positions for actors standing still: alone in the middle of their hex, or in a
+  // small ring when they share it.
+  spots(state) {
+    const out = new Map();
+    const groups = new Map();
+    for (const a of [...state.units.filter((u) => u.state !== 'away'), ...state.monsters]) {
+      if (a.path?.length) continue;
+      const k = `${Math.round(a.x * 100)},${Math.round(a.z * 100)}`;
+      (groups.get(k) ?? groups.set(k, []).get(k)).push(a);
+    }
+    for (const group of groups.values()) {
+      if (group.length === 1) continue;
+      const ring = group.length <= 3 ? 0.38 : 0.52;
+      group.forEach((a, i) => {
+        const angle = (i / group.length) * Math.PI * 2 + 0.5;
+        out.set(a, { x: a.x + Math.cos(angle) * ring, z: a.z + Math.sin(angle) * ring });
+      });
+    }
+    return out;
+  }
+
   update(state, dt, now, camera, selected) {
+    // Where each actor stands. Actors walk between hex middles; when several stand in
+    // the same hex they spread out inside it instead of overlapping.
+    const spot = this.spots(state);
+    const follow = 1 - Math.exp(-dt * 14);
+
     // Units.
     const seen = new Set();
     for (const u of state.units) {
@@ -231,7 +257,10 @@ export class Actors {
         if (this.pendingCheer === u.id) view.once('cheer', now);
       }
       view.group.visible = u.state !== 'away';
-      view.group.position.set(u.x, 0, u.z);
+      const at = spot.get(u) ?? { x: u.x, z: u.z };
+      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, 0, at.z), follow);
+      else view.group.position.set(at.x, 0, at.z);
+      view.placed = true;
       if (u.heading !== undefined) view.model.rotation.y = u.heading;
       if (now > view.busyUntil) view.play(u.state === 'moving' ? (UNITS[u.type].speed > 1.5 ? 'run' : 'walk') : 'idle');
       view.mixer.update(dt);
@@ -254,7 +283,10 @@ export class Actors {
         this.scene.add(view.group);
         this.monsters.set(m.id, view);
       }
-      view.group.position.set(m.x, 0, m.z);
+      const at = spot.get(m) ?? { x: m.x, z: m.z };
+      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, 0, at.z), follow);
+      else view.group.position.set(at.x, 0, at.z);
+      view.placed = true;
       if (m.heading !== undefined) view.group.rotation.y = m.heading;
       const t = now * 1000;
       view.lunge = Math.max(0, view.lunge - dt);
@@ -313,7 +345,8 @@ export class Actors {
     this.rings.children.forEach((ring, i) => {
       const u = state.units.find((x) => x.id === selected[i]);
       ring.visible = !!u && u.state !== 'away';
-      if (u) ring.position.set(u.x, 0.03, u.z);
+      const view = u && this.units.get(u.id);
+      if (view) ring.position.set(view.group.position.x, 0.03, view.group.position.z);
     });
   }
 }
