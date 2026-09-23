@@ -1,0 +1,144 @@
+// The island: tiles, nature on them, dungeon doorways and the dark over unexplored hexes.
+// Everything that repeats is drawn with instancing, so hundreds of hexes stay cheap.
+import * as THREE from 'three';
+import { DIRS, key, toWorld } from '../hex.js';
+import { buildingAt } from '../sim.js';
+import { source } from './assets.js';
+
+const DECO = {
+  forest: ['trees_A_medium', 'trees_B_medium', 'trees_A_small'],
+  hills: ['hills_A', 'hills_B_trees', 'hill_single_A'],
+  mountain: ['mountain_A', 'mountain_B', 'mountain_C_grass'],
+  grass: ['tree_single_A', 'tree_single_B', 'rock_single_A', 'rock_single_C'],
+};
+export const FOG_COLOUR = 0x0b1522;
+
+const hash = (k) => [...k].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
+
+// Builds one InstancedMesh per mesh inside a model, placed at each of the matrices.
+function instanced(name, matrices, material) {
+  const group = new THREE.Group();
+  if (!matrices.length) return group;
+  const root = source(name);
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const mesh = new THREE.InstancedMesh(o.geometry, material ?? o.material, matrices.length);
+    const local = o.matrixWorld;
+    const m = new THREE.Matrix4();
+    matrices.forEach((placed, i) => mesh.setMatrixAt(i, m.multiplyMatrices(placed, local)));
+    mesh.castShadow = material?.isMeshStandardMaterial ?? true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  });
+  return group;
+}
+
+const place = (x, y, z, rotation = 0, scale = 1) =>
+  new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation), new THREE.Vector3(scale, scale, scale));
+
+export class Terrain {
+  constructor(scene) {
+    this.scene = scene;
+    this.group = new THREE.Group();
+    scene.add(this.group);
+    this.fogMaterial = new THREE.MeshBasicMaterial({ color: FOG_COLOUR });
+    // Open sea around the island.
+    const sea = new THREE.Mesh(new THREE.CircleGeometry(120, 48), new THREE.MeshBasicMaterial({ color: FOG_COLOUR }));
+    sea.rotation.x = -Math.PI / 2;
+    sea.position.y = -0.35;
+    scene.add(sea);
+    this.roadMaterial = new THREE.MeshStandardMaterial({ color: 0xc2a574, roughness: 1 });
+    this.roadPiece = new THREE.BoxGeometry(0.42, 0.04, 1.02).translate(0, 0.02, 0.51);
+    this.roadHub = new THREE.CylinderGeometry(0.24, 0.24, 0.04, 12).translate(0, 0.02, 0);
+  }
+
+  // Rebuilds everything. Called when the fog lifts, a forest is cleared or a road appears.
+  update(state) {
+    for (const child of [...this.group.children]) {
+      child.traverse((o) => o.isInstancedMesh && o.dispose());
+      this.group.remove(child);
+    }
+    const byModel = new Map();
+    const add = (name, matrix) => (byModel.get(name) ?? byModel.set(name, []).get(name)).push(matrix);
+    const hidden = [];
+    for (const tile of state.tiles.values()) {
+      const k = key(tile.q, tile.r);
+      const { x, z } = toWorld(tile.q, tile.r);
+      if (!state.revealed.has(k)) {
+        hidden.push(place(x, -0.02, z));
+        continue;
+      }
+      const h = hash(k);
+      const turn = ((h % 6) * Math.PI) / 3;
+      add(tile.terrain === 'water' ? 'hex_water' : 'hex_grass', place(x, 0, z));
+      if (buildingAt(state, tile.q, tile.r) || state.roads.has(k)) continue;
+      if (tile.dungeon) {
+        this.dungeon(add, x, z);
+        continue;
+      }
+      const options = DECO[tile.terrain];
+      if (tile.terrain === 'water') {
+        if (h % 5 === 0) add('waterlily_A', place(x + ((h >>> 4) % 10) / 20 - 0.25, -0.2, z, turn));
+      } else if (tile.terrain === 'grass') {
+        if (h % 4 === 0) add(options[(h >>> 3) % options.length], place(x + ((h >>> 5) % 10) / 14 - 0.35, 0, z + ((h >>> 9) % 10) / 14 - 0.35, turn));
+      } else if (options) {
+        add(options[(h >>> 3) % options.length], place(x, 0, z, turn));
+      }
+    }
+    for (const [name, matrices] of byModel) this.group.add(instanced(name, matrices, name === 'hex_grass' ? this.grassMaterial() : undefined));
+    this.group.add(instanced('hex_grass', hidden, this.fogMaterial));
+    this.roads(state);
+  }
+
+  // The pack's grass is a bright lime; a touch greener reads better across a whole island.
+  grassMaterial() {
+    if (!this.grass) {
+      source('hex_grass').traverse((o) => {
+        if (o.isMesh && !this.grass) {
+          this.grass = o.material.clone();
+          this.grass.color.setRGB(0.6, 0.86, 0.52);
+        }
+      });
+    }
+    return this.grass;
+  }
+
+  // A dark doorway in a little ruin, lit by two torches.
+  dungeon(add, x, z) {
+    add('wall_doorway', place(x, 0, z + 0.1, 0, 0.36));
+    add('torch_mounted', place(x - 0.55, 0.45, z + 0.3, 0, 0.5));
+    add('torch_mounted', place(x + 0.55, 0.45, z + 0.3, 0, 0.5));
+    add('barrel_small_stack', place(x + 0.55, 0, z - 0.45, 0.6, 0.3));
+    add('banner_patternA_red', place(x, 0, z + 0.05, 0, 0.3));
+  }
+
+  // Dirt roads: from the middle of each road hex towards its road and building neighbours.
+  roads(state) {
+    const pieces = [];
+    const hubs = [];
+    const joined = (q, r) => state.roads.has(key(q, r)) || !!buildingAt(state, q, r);
+    for (const k of state.roads) {
+      const [q, r] = k.split(',').map(Number);
+      const { x, z } = toWorld(q, r);
+      hubs.push(place(x, 0, z));
+      DIRS.forEach(([dq, dr]) => {
+        if (!joined(q + dq, r + dr)) return;
+        const to = toWorld(q + dq, r + dr);
+        const angle = Math.atan2(to.x - x, to.z - z);
+        pieces.push(place(x, 0, z, angle));
+        // Buildings get the other half of the road, up to their door.
+        if (!state.roads.has(key(q + dq, r + dr))) pieces.push(place(to.x, 0, to.z, angle + Math.PI, 0.55));
+      });
+    }
+    const add = (geometry, matrices) => {
+      if (!matrices.length) return;
+      const mesh = new THREE.InstancedMesh(geometry, this.roadMaterial, matrices.length);
+      matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    };
+    add(this.roadPiece, pieces);
+    add(this.roadHub, hubs);
+  }
+}

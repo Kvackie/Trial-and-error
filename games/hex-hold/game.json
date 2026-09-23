@@ -1,0 +1,10 @@
+{
+  "name": "Hex Hold",
+  "description": "Build a town on a hex island, gather resources, train heroes, raid dungeons and hold out against growing waves of monsters.",
+  "appId": "io.github.kvackie.trialanderror.hexhold",
+  "icon": "icon.svg",
+  "sv": {
+    "name": "Hexfästet",
+    "description": "Bygg en stad på en hexagonö, samla resurser, träna hjältar, plundra grottor och stå emot allt starkare vågor av monster."
+  }
+}

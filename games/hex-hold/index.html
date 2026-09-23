@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1522" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>Hex Hold</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b1522; overflow: hidden; touch-action: none;
+        -webkit-user-select: none; user-select: none; font-family: system-ui, sans-serif; color: #eef3f8; }
+      #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      svg { display: block; }
+
+      /* Top: Home, the next-wave note, Settings and Help; resources underneath. */
+      .top { position: fixed; top: 0; left: 0; right: 0; padding: max(10px, env(safe-area-inset-top)) 10px 0; display: grid; gap: 8px; pointer-events: none; }
+      .top > * { pointer-events: auto; }
+      .bar { display: flex; align-items: center; gap: 8px; }
+      .round { width: 48px; height: 48px; flex: none; border-radius: 50%; border: 3px solid #e0e2ff; background: #2b2d5c; display: grid; place-items: center; padding: 0; }
+      .round span { font-size: 26px; font-weight: 800; line-height: 1; }
+      #wave { flex: 1; background: none; border: 0; padding: 6px 0; text-align: center; font-weight: 700; font-size: 15px; color: #cfe3f5; text-shadow: 0 1px 4px #000; min-width: 0; }
+      #wave.alarm { color: #ff9a7a; }
+      #resources { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+      .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px 4px 6px; border-radius: 999px; background: rgba(8, 16, 26, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.14); font-size: 14px; font-variant-numeric: tabular-nums; }
+      .chip svg { width: 20px; height: 20px; }
+      .chip small { color: #9fd89a; font-size: 11px; }
+      .chip.full b { color: #ffcf6a; }
+      @media (max-width: 440px) {
+        .chip { padding: 3px 7px 3px 4px; font-size: 13px; }
+        .chip small { display: none; }
+        #resources { gap: 4px; }
+      }
+
+      /* Bottom panel. */
+      #panel { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto;
+        background: rgba(14, 26, 38, 0.92); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 12px; box-sizing: border-box; }
+      .head { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+      .head h2 { margin: 0; font-size: 18px; }
+      .head p { margin: 4px 0 0; color: #b7c6d4; font-size: 14px; }
+      .lvl { font-size: 13px; font-weight: 600; color: #ffd98a; margin-left: 6px; }
+      .x { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: transparent; font-size: 16px; }
+      .hint { margin: 6px 0; color: #b7c6d4; font-size: 14px; }
+      .lines { margin: 6px 0; padding-left: 18px; font-size: 14px; color: #d8e3ec; }
+      .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+      .row.idle { margin: 0; }
+      .row.idle .hint { flex: 1 1 180px; }
+      .btn { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 2px solid #6fb3e0; background: transparent; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 8px; }
+      .btn.primary { background: #6fb3e0; color: #0b1522; border-color: #6fb3e0; }
+      .btn.ghost { border-color: rgba(255, 255, 255, 0.25); font-weight: 500; font-size: 14px; }
+      .btn.off, .card.off, .pick.off { opacity: 0.5; }
+      .card.hard { opacity: 0.3; }
+      .cards { display: flex; gap: 8px; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: thin; }
+      .card { flex: none; width: 104px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.05);
+        padding: 6px; display: grid; gap: 3px; justify-items: center; text-align: center; }
+      .card img { width: 72px; height: 72px; }
+      .card b { font-size: 13px; line-height: 1.2; }
+      .costs { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 6px; }
+      .cost { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-variant-numeric: tabular-nums; }
+      .cost svg { width: 15px; height: 15px; }
+      .cost.short { color: #ff8a7a; }
+      .picks .pick { flex: none; display: grid; justify-items: center; gap: 2px; width: 86px; padding: 6px; border-radius: 12px; font-size: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.05); }
+      .pick img { width: 56px; height: 56px; }
+      .pick.on { border-color: #ffd98a; background: rgba(255, 217, 138, 0.15); }
+      .chance { flex: 1; font-weight: 600; color: #ffd98a; }
+
+      #toasts { position: fixed; left: 0; right: 0; top: calc(max(10px, env(safe-area-inset-top)) + 104px); display: grid; justify-items: center; gap: 6px; pointer-events: none; padding: 0 12px; }
+      .toast { max-width: 520px; background: rgba(8, 16, 26, 0.88); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 12px; padding: 8px 14px;
+        font-size: 14px; text-align: center; transition: opacity 0.4s, transform 0.4s; }
+      .toast.warn { border-color: #e0a24a; }
+      .toast.alarm { border-color: #ff6a55; color: #ffd0c6; font-weight: 700; }
+      .toast.out { opacity: 0; transform: translateY(-8px); }
+
+      #loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; justify-items: center; background: #0b1522; font-size: 20px; font-weight: 700; }
+      #loading div { width: 220px; height: 8px; border-radius: 4px; background: #1f3346; overflow: hidden; }
+      #loading i { display: block; height: 100%; width: 0; background: #6fb3e0; transition: width 0.2s; }
+      @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div class="top">
+      <div class="bar">
+        <button class="round" id="home" aria-label="Home">
+          <svg width="28" height="28" viewBox="-17 -18 34 34" fill="#fff"><path d="M-17 -2 17 -2 0 -18z" /><path d="M-12 -3h24v19h-7v-11h-10v11h-7z" /></svg>
+        </button>
+        <button id="wave" type="button"></button>
+        <button class="round" id="settings" aria-label="Settings">
+          <svg width="28" height="28" viewBox="-16 -16 32 32" fill="#fff"><path d="M-2.5-15h5l.8 4.2 3 1.3 3.6-2.4 3.5 3.5-2.4 3.6 1.3 3 4.2.8v5l-4.2.8-1.3 3 2.4 3.6-3.5 3.5-3.6-2.4-3 1.3-.8 4.2h-5l-.8-4.2-3-1.3-3.6 2.4-3.5-3.5 2.4-3.6-1.3-3-4.2-.8v-5l4.2-.8 1.3-3-2.4-3.6 3.5-3.5 3.6 2.4 3-1.3z" /><circle r="5" fill="#2b2d5c" /></svg>
+        </button>
+        <button class="round" id="help" aria-label="How to play"><span>?</span></button>
+      </div>
+      <div id="resources"></div>
+    </div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="panel"></div>
+    <div id="loading">Hex Hold<div><i></i></div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

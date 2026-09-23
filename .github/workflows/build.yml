@@ -21,6 +21,7 @@ on:
           # Kept up to date by `npm run new-game`.
           # games:start
           - block-drop
+          - hex-hold
           - lantern-maze
           - potion-market
           - potion-match

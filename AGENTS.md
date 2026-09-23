@@ -103,9 +103,11 @@ Everything under "Each game" about `shared/`, Phaser, the header buttons, langua
 sounds and the leaderboard is optional for them: a 3D game only has to work as its own
 page in this repo. These rules still apply:
 
-- Mobile first: portrait phone, touch first, W A S D + Space on top, checked at
-  390 × 844 then 1280 × 720. The 3D view fills the screen and follows its size; keep
-  what the player needs in view on narrow screens.
+- Mobile first: portrait phone, touch first, checked at 390 × 844 then 1280 × 720.
+  The 3D view fills the screen and follows its size; keep what the player needs in view
+  on narrow screens.
+- Desktop controls are decided per game: W A S D + Space like the 2D games, or mouse
+  only (Hex Hold: drag, right-drag, wheel, click). Ask the owner when it isn't clear.
 - A Home button at the top left (the template's calls `goHome()`), `game.json` with a
   unique `appId`, an icon in `public/`, relative paths, storage keys namespaced by game,
   and `handleAndroidBack()` in `main.js`.
@@ -136,6 +138,12 @@ page in this repo. These rules still apply:
   dropdown, or every game with `all`. Per-game APKs and the all-games hub app are
   opt-in per run. Don't add automatic triggers.
 - There is one pipeline for everything: no separate CI and production setups.
+
+## Asking the owner
+
+- When a decision is the owner's to make, offer it as selectable options (with a
+  recommended one first) rather than open questions, and keep open questions for what
+  options can't cover.
 
 ## Commits
 

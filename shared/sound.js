@@ -165,6 +165,25 @@ const SOUNDS = {
     notes([392, 523, 659, 784], { at: 0.2, gap: 0.07, dur: 0.14, gain: 0.18 });
   },
   coin: () => notes([1319, 1760], { gap: 0.06, dur: 0.12, type: 'square', gain: 0.07 }),
+  // Town and battle
+  hammer: () => {
+    noise({ dur: 0.05, gain: 0.3, filter: 'bandpass', freq: 1800 });
+    tone(220, { dur: 0.06, type: 'square', gain: 0.08 });
+  },
+  clash: () => {
+    noise({ dur: 0.12, gain: 0.2, filter: 'highpass', freq: 3000 });
+    tone(1600 + Math.random() * 400, { dur: 0.1, type: 'triangle', gain: 0.06, to: 900 });
+  },
+  twang: () => tone(420, { dur: 0.12, type: 'sawtooth', gain: 0.06, to: 180 }),
+  spell: () => notes([880, 1320, 1760], { gap: 0.03, dur: 0.12, gain: 0.1 }),
+  horn: () => {
+    tone(196, { dur: 0.9, type: 'sawtooth', gain: 0.1 });
+    tone(294, { at: 0.35, dur: 0.8, type: 'sawtooth', gain: 0.08 });
+  },
+  crumble: () => {
+    noise({ dur: 0.7, gain: 0.35, freq: 500 });
+    tone(80, { dur: 0.5, gain: 0.3, to: 40 });
+  },
 };
 
 export function playSound(name, params) {
