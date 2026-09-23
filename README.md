@@ -32,7 +32,8 @@ Every game has the same frame around it:
 
 ```
 games/<game>/      one folder per game: index.html, src/, public/, game.json
-template/          starting point copied by `npm run new-game`
+template/          starting point copied by `npm run new-game` (Phaser, 2D)
+template-3d/       starting point copied by `npm run new-game -- <game> "Name" --3d` (Three.js)
 leaderboard/       online service: leaderboard, shared pond and market (Cloudflare Worker + D1 database)
 shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
@@ -95,6 +96,18 @@ Then, before calling the game done (see [AGENTS.md](AGENTS.md) for the rules):
 - rewrite `src/strings.js`, the help text and the `sv` block in `game.json` in both languages, and add W/A/S/D keys if the game has anything to move;
 - draw its own `public/icon.svg` (or `.png`, named in `game.json`);
 - add the game to `leaderboard/src/rules.js` with a maximum score and run **Deploy leaderboard**, or remove the trophy button and the `leaderboard` option if the game has no score.
+
+### Add a 3D game
+
+```sh
+npm run new-game -- my-game "My Game" --3d
+```
+
+3D games use [Three.js](https://threejs.org/) instead of Phaser. They are built, listed on the hub and packaged
+as APKs exactly like the other games (the workflow needs nothing extra), but they don't have to use `shared/`:
+each one is its own page. `template-3d/` is a small working example (tap the crystal, W A S D turn the camera)
+with a full-screen renderer that follows the screen size, a Home button, models built in code and a pause while
+the page is hidden. The rules for 3D games are in [AGENTS.md](AGENTS.md#3d-games).
 
 ## Build and deploy
 

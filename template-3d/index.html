@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c2046" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>__NAME__</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #1c2046;
+        overflow: hidden;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        font-family: system-ui, sans-serif;
+      }
+      /* The 3D view fills the whole screen; the buttons and numbers sit on top. */
+      #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px;
+        display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+      .hud > * { pointer-events: auto; }
+      #home { width: 52px; height: 52px; border-radius: 50%; border: 3px solid #e0e2ff; background: #2b2d5c;
+        display: grid; place-items: center; cursor: pointer; padding: 0; }
+      #counter { color: #ffd166; font-size: 32px; font-weight: 700; text-shadow: 0 2px 6px #000; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div class="hud">
+      <button id="home" aria-label="Home">
+        <svg width="30" height="30" viewBox="-17 -18 34 34" fill="#fff"><path d="M-17 -2 17 -2 0 -18z" /><path d="M-12 -3h24v19h-7v-11h-10v11h-7z" /></svg>
+      </button>
+      <span id="counter">0</span>
+      <span style="width: 52px"></span>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
