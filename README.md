@@ -76,15 +76,21 @@ npm run hub                      # writes dist/index.html listing the games buil
 npm run new-game -- my-game "My Game"
 ```
 
-This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-game` to the workflow's dropdown. Commit and push, and it can be selected in the workflow.
+This copies `template/` to `games/my-game/`, fills in the game's id and name (`game.json`, storage and leaderboard keys), and adds `my-game` to the workflow's dropdown. Commit and push, and it can be selected in the workflow.
 
-The template is a bare starting point: it already uses the shared screen sizing and Android Back handling, but a finished game also needs (see [AGENTS.md](AGENTS.md) for the rules, and the existing games for examples):
+The template is a small working example game (tap the circle for 30 seconds) that already has everything a game here needs, so you replace the example rather than wire things up:
 
-- the header buttons: `addHomeButton()`, `addSettingsButton()`, a **?** button with `openHelpDialog()`, and `addTrophyButton()` if it has a score;
-- `src/strings.js` with English and Swedish text, a help dialog in both languages, and the `sv` block in `game.json`;
-- keyboard controls with `bindKeys()` and sounds with `playSound()`;
-- its own `public/icon.svg` (or `.png`, named in `game.json`);
-- `createGameOverScene('<game>:best', 'Game', { leaderboard: { game } })` if it ends with a score, and an entry in `leaderboard/src/rules.js`.
+- the header: Home, trophy (leaderboard), gear (settings) and **?** (help) buttons, with the game paused while a dialog is open;
+- English and Swedish text in `src/strings.js` and `src/help.js`, following a language change live;
+- the Space key through `bindKeys()`, sounds through `playSound()`, and the shared Game Over screen with its leaderboard prompt;
+- a transparent canvas over a CSS gradient, and `<game>:best` as the best-score key.
+
+Then, before calling the game done (see [AGENTS.md](AGENTS.md) for the rules):
+
+- replace the example in `src/scenes/GameScene.js` with the real game, keeping rules that need testing in their own file;
+- rewrite `src/strings.js`, the help text and the `sv` block in `game.json` in both languages, and add W/A/S/D keys if the game has anything to move;
+- draw its own `public/icon.svg` (or `.png`, named in `game.json`);
+- add the game to `leaderboard/src/rules.js` with a maximum score and run **Deploy leaderboard**, or remove the trophy button and the `leaderboard` option if the game has no score.
 
 ## Build and deploy
 

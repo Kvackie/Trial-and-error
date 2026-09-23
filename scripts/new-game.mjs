@@ -18,11 +18,13 @@ const name = displayName ?? id.split('-').map((w) => w[0].toUpperCase() + w.slic
 const appIdSuffix = id.replace(/-/g, '');
 
 fs.cpSync(path.join(ROOT, 'template'), target, { recursive: true });
-for (const file of ['game.json', 'index.html']) {
+// Fill in the placeholders: __GAME__ (storage keys, leaderboard), __NAME__, __APPID__.
+for (const file of fs.readdirSync(target, { recursive: true })) {
   const p = path.join(target, file);
+  if (!/\.(js|json|html)$/.test(file) || !fs.statSync(p).isFile()) continue;
   fs.writeFileSync(
     p,
-    fs.readFileSync(p, 'utf8').replaceAll('__NAME__', name).replaceAll('__APPID__', appIdSuffix),
+    fs.readFileSync(p, 'utf8').replaceAll('__GAME__', id).replaceAll('__NAME__', name).replaceAll('__APPID__', appIdSuffix),
   );
 }
 
@@ -39,3 +41,5 @@ fs.writeFileSync(workflowPath, workflow.replace(block, `$1${options}$3`));
 
 console.log(`Created games/${id} ("${name}") and added it to the workflow dropdown.`);
 console.log(`Next: npm run dev -- ${id}`);
+console.log(`Then: replace the example game, fill in the "sv" block in game.json, draw public/icon.svg,`);
+console.log(`and add '${id}' to leaderboard/src/rules.js (then run Deploy leaderboard) so scores are accepted.`);

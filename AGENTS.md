@@ -59,9 +59,10 @@ how games here must be built. Read both before starting.
 
 - Lives in `games/<game>/` with a `game.json` (name, one-line description, `sv` block,
   icon, unique Android `appId`). Create new games with `npm run new-game -- <game> "Name"`,
-  which also adds the game to the workflow dropdown. The template is deliberately bare:
-  add everything below before calling a game done (the README's "Add a game" has a
-  checklist).
+  which also adds the game to the workflow dropdown. The template is a small example game
+  that already follows these rules: replace the example, keep the header, dialogs,
+  languages, sounds and Game Over screen, and work through the README's "Add a game"
+  checklist before calling a game done.
 - Namespace anything stored in the browser by game, e.g. the best score key `<game>:best`.
   All games share one origin inside the all-games hub app, so un-namespaced keys would clash.
   The `settings:` and `leaderboard:` prefixes are reserved for the shared modules.
