@@ -6,27 +6,45 @@
     <meta name="theme-color" content="#10132a" />
     <title>Trial and Error</title>
     <link rel="icon" href="data:," />
+    <script>
+      // Same language choice as the games (shared/i18n.js).
+      (function () {
+        var lang;
+        try { lang = localStorage.getItem('settings:lang'); } catch (e) {}
+        if (lang !== 'en' && lang !== 'sv') lang = /^sv\b/i.test(navigator.language || '') ? 'sv' : 'en';
+        document.documentElement.lang = lang;
+      })();
+    </script>
     <style>
       :root { color-scheme: dark; --bg: #10132a; --card: #1c2046; --frame: #5a5e8f; --text: #f4f4fb; --muted: #a3a6c8; --accent: #ffd166; }
       * { box-sizing: border-box; }
+      html[lang="sv"] [data-l="en"], html:not([lang="sv"]) [data-l="sv"] { display: none; }
       body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
-      main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
-      h1 { margin: 0 0 4px; font-size: 2rem; }
-      .intro { margin: 0 0 24px; color: var(--muted); }
+      main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      h1 { margin: 0; font-size: 2rem; }
+      .langs { display: flex; gap: 8px; }
+      .langs button { display: grid; place-items: center; width: 52px; height: 44px; border-radius: 10px; cursor: pointer;
+        border: 2px solid transparent; background: rgba(255, 255, 255, 0.06); }
+      .langs button[aria-pressed="true"] { border-color: var(--accent); background: rgba(255, 255, 255, 0.14); }
+      .intro { margin: 6px 0 24px; color: var(--muted); }
       .all-apk { display: inline-block; margin: -12px 0 24px; color: var(--text); }
       ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
       .card { background: var(--card); border-radius: 14px; padding: 16px; }
-      /* The framed title and description are the link that opens the game. */
+      /* The framed icon, title and description are the link that opens the game. */
       .play {
         color: inherit;
         text-decoration: none;
-        display: block;
+        display: flex;
+        gap: 14px;
+        align-items: center;
         padding: 12px 14px;
         border: 1px solid var(--frame);
         border-radius: 10px;
         transition: border-color 0.15s;
       }
       .play:hover, .play:focus-visible { border-color: var(--accent); outline: none; }
+      .icon { flex: none; width: 72px; height: 72px; border-radius: 16px; }
       .play h2 { margin: 0 0 6px; font-size: 1.25rem; color: var(--accent); }
       .play p { margin: 0; line-height: 1.4; }
       .meta { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
@@ -36,31 +54,71 @@
   </head>
   <body>
     <main>
-      <h1>Trial and Error</h1>
-      <p class="intro">Small games you can play right in your browser.</p>
+      <header>
+        <h1>Trial and Error</h1>
+        <div class="langs" role="group" aria-label="Language / Språk">
+          <button data-set-lang="en" aria-label="English"><svg viewBox="0 0 60 30" width="36" height="18" aria-hidden="true">
+    <clipPath id="uk-clip"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+    <clipPath id="uk-diag"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+    <g clip-path="url(#uk-clip)">
+      <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uk-diag)" stroke="#C8102E" stroke-width="4"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/>
+    </g></svg></button>
+          <button data-set-lang="sv" aria-label="Svenska"><svg viewBox="0 0 16 10" width="29" height="18" aria-hidden="true">
+    <rect width="16" height="10" fill="#006AA7"/>
+    <rect x="5" width="2" height="10" fill="#FECC02"/>
+    <rect y="4" width="16" height="2" fill="#FECC02"/></svg></button>
+        </div>
+      </header>
+      <p class="intro"><span data-l="en">Small games you can play right in your browser.</span><span data-l="sv">Små spel som du kan spela direkt i webbläsaren.</span></p>
       <ul>
       <li class="card">
         <a class="play" href="./block-drop/">
-          <h2>Block Drop</h2>
-          <p>Stack falling blocks and clear full rows. Move, rotate and drop with the buttons.</p>
+          <img class="icon" src="./block-drop/icon.svg" alt="" width="72" height="72" />
+          <div>
+            <h2><span data-l="en">Block Drop</span><span data-l="sv">Blockfall</span></h2>
+            <p><span data-l="en">Stack falling blocks and clear full rows. Move, rotate and drop with the buttons.</span><span data-l="sv">Stapla fallande block och rensa hela rader. Flytta, vrid och släpp med knapparna.</span></p>
+          </div>
         </a>
-        <p class="meta">Updated 2026-09-23</p>
+        <p class="meta"><span data-l="en">Updated 2026-09-23</span><span data-l="sv">Uppdaterad 2026-09-23</span></p>
       </li>
       <li class="card">
         <a class="play" href="./lantern-maze/">
-          <h2>Lantern Maze</h2>
-          <p>Find your way through dark, ever-growing mazes by lantern light. Every dead end hides a locked chest and a sum to solve.</p>
+          <img class="icon" src="./lantern-maze/icon.svg" alt="" width="72" height="72" />
+          <div>
+            <h2><span data-l="en">Lantern Maze</span><span data-l="sv">Lyktlabyrinten</span></h2>
+            <p><span data-l="en">Find your way through dark, ever-growing mazes by lantern light. Every dead end hides a locked chest and a sum to solve.</span><span data-l="sv">Hitta vägen genom mörka, växande labyrinter i lyktans sken. Varje återvändsgränd döljer en låst kista och ett tal att lösa.</span></p>
+          </div>
         </a>
-        <p class="meta">Updated 2026-09-23</p>
+        <p class="meta"><span data-l="en">Updated 2026-09-23</span><span data-l="sv">Uppdaterad 2026-09-23</span></p>
       </li>
       <li class="card">
         <a class="play" href="./potion-match/">
-          <h2>Potion Match</h2>
-          <p>Swap potions to match three or more and make bombs, crosses and rainbows. Matches are free, misses cost a move: play well and it never ends.</p>
+          <img class="icon" src="./potion-match/icon.png" alt="" width="72" height="72" />
+          <div>
+            <h2><span data-l="en">Potion Match</span><span data-l="sv">Trolldrycker</span></h2>
+            <p><span data-l="en">Swap potions to match three or more and make bombs, crosses and rainbows. Matches are free, misses cost a move: play well and it never ends.</span><span data-l="sv">Byt plats på drycker för att matcha tre eller fler och skapa bomber, kors och regnbågar. Matchningar är gratis, missar kostar ett drag: spela väl så tar det aldrig slut.</span></p>
+          </div>
         </a>
-        <p class="meta">Updated 2026-09-23</p>
+        <p class="meta"><span data-l="en">Updated 2026-09-23</span><span data-l="sv">Uppdaterad 2026-09-23</span></p>
       </li>
       </ul>
     </main>
+    <script>
+      document.querySelectorAll('[data-set-lang]').forEach(function (button) {
+        var mark = function () { button.setAttribute('aria-pressed', String(button.dataset.setLang === document.documentElement.lang)); };
+        mark();
+        button.addEventListener('click', function () {
+          document.documentElement.lang = button.dataset.setLang;
+          try { localStorage.setItem('settings:lang', button.dataset.setLang); } catch (e) {}
+          document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(b.dataset.setLang === button.dataset.setLang));
+          });
+        });
+      });
+    </script>
   </body>
 </html>
