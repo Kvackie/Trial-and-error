@@ -74,25 +74,6 @@ The **hub app** is one Android app that opens on the game list and has every gam
 
 Games that weren't built are never touched on `gh-pages`. The APK's `versionCode` is the workflow run number, so each new build installs over the previous one. `all` is a reserved name, so no game can be called that.
 
-### One-time repository setup
-
-1. **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch `gh-pages`, folder `/ (root)`.
-   The `gh-pages` branch is created by the first deploy, so run the workflow once before selecting it.
-2. **Settings → Actions → General → Workflow permissions: Read and write permissions.**
-3. *(Recommended)* Add a signing key so every APK is signed with the same key.
-   Otherwise each build is signed with a different throwaway debug key, and Android
-   makes you uninstall the old version before installing the new one.
-
-   ```sh
-   keytool -genkeypair -v -keystore release.keystore -alias game \
-     -keyalg RSA -keysize 2048 -validity 10000
-   base64 -w0 release.keystore   # macOS: base64 -i release.keystore
-   ```
-
-   Add these under **Settings → Secrets and variables → Actions**:
-   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
-   Keep `release.keystore` somewhere safe and never commit it. The same key signs every game.
-
 ### Build an APK locally (optional)
 
 Requires JDK 21 and the Android SDK.
