@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1522" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>Hex Hold</title>
+    <style>html,body{touch-action:none;-webkit-user-select:none;user-select:none;color:#eef3f8;background:#0b1522;height:100%;margin:0;font-family:system-ui,sans-serif;overflow:hidden}#game{width:100%;height:100%;display:block;position:fixed;inset:0}button{font:inherit;color:inherit;cursor:pointer}svg{display:block}.top{padding:max(10px, env(safe-area-inset-top)) 10px 0;pointer-events:none;gap:8px;display:grid;position:fixed;top:0;left:0;right:0}.top>*{pointer-events:auto}.bar{align-items:center;gap:8px;display:flex}.round{background:#2b2d5c;border:3px solid #e0e2ff;border-radius:50%;flex:none;place-items:center;width:48px;height:48px;padding:0;display:grid}.round span{font-size:26px;font-weight:800;line-height:1}#wave{text-align:center;color:#cfe3f5;text-shadow:0 1px 4px #000;background:0 0;border:0;flex:1;min-width:0;padding:6px 0;font-size:15px;font-weight:700}#wave.alarm{color:#ff9a7a}#resources{flex-wrap:wrap;justify-content:center;gap:6px;display:flex}.chip{font-variant-numeric:tabular-nums;background:#08101ab8;border:1px solid #ffffff24;border-radius:999px;align-items:center;gap:4px;padding:4px 9px 4px 6px;font-size:14px;display:inline-flex}.chip svg{width:20px;height:20px}.chip small{color:#9fd89a;font-size:11px}.chip.full b{color:#ffcf6a}@media (width<=440px){.chip{padding:3px 7px 3px 4px;font-size:13px}.chip small{display:none}#resources{gap:4px}}#panel{left:8px;right:8px;bottom:max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:#0e1a26eb;border:1px solid #ffffff24;border-radius:18px;max-width:720px;margin:0 auto;padding:12px;position:fixed}.head{justify-content:space-between;align-items:start;gap:10px;display:flex}.head h2{margin:0;font-size:18px}.head p{color:#b7c6d4;margin:4px 0 0;font-size:14px}.lvl{color:#ffd98a;margin-left:6px;font-size:13px;font-weight:600}.x{background:0 0;border:1px solid #ffffff40;border-radius:50%;flex:none;width:40px;height:40px;font-size:16px}.hint{color:#b7c6d4;margin:6px 0;font-size:14px}.lines{color:#d8e3ec;margin:6px 0;padding-left:18px;font-size:14px}.row{flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;display:flex}.row.idle{margin:0}.row.idle .hint{flex:180px}.btn{background:0 0;border:2px solid #6fb3e0;border-radius:12px;align-items:center;gap:8px;min-height:44px;padding:0 16px;font-weight:600;display:inline-flex}.btn.primary{color:#0b1522;background:#6fb3e0;border-color:#6fb3e0}.btn.ghost{border-color:#ffffff40;font-size:14px;font-weight:500}.btn.off,.card.off,.pick.off{opacity:.5}.card.hard{opacity:.3}.cards{scrollbar-width:thin;gap:8px;padding:8px 2px 4px;display:flex;overflow-x:auto}.card{text-align:center;background:#ffffff0d;border:1px solid #ffffff2e;border-radius:12px;flex:none;justify-items:center;gap:3px;width:104px;padding:6px;display:grid}.card img{width:72px;height:72px}.card b{font-size:13px;line-height:1.2}.costs{flex-wrap:wrap;justify-content:center;gap:2px 6px;display:flex}.cost{font-variant-numeric:tabular-nums;align-items:center;gap:2px;font-size:12px;display:inline-flex}.cost svg{width:15px;height:15px}.cost.short{color:#ff8a7a}.picks .pick{background:#ffffff0d;border:2px solid #ffffff2e;border-radius:12px;flex:none;justify-items:center;gap:2px;width:86px;padding:6px;font-size:12px;display:grid}.pick img{width:56px;height:56px}.pick.on{background:#ffd98a26;border-color:#ffd98a}.chance{color:#ffd98a;flex:1;font-weight:600}#toasts{left:0;right:0;top:calc(max(10px, env(safe-area-inset-top)) + 104px);pointer-events:none;justify-items:center;gap:6px;padding:0 12px;display:grid;position:fixed}.toast{text-align:center;background:#08101ae0;border:1px solid #ffffff2e;border-radius:12px;max-width:520px;padding:8px 14px;font-size:14px;transition:opacity .4s,transform .4s}.toast.warn{border-color:#e0a24a}.toast.alarm{color:#ffd0c6;border-color:#ff6a55;font-weight:700}.toast.out{opacity:0;transform:translateY(-8px)}#loading{background:#0b1522;place-content:center;justify-items:center;gap:14px;font-size:20px;font-weight:700;display:grid;position:fixed;inset:0}#loading div{background:#1f3346;border-radius:4px;width:220px;height:8px;overflow:hidden}#loading i{background:#6fb3e0;width:0;height:100%;transition:width .2s;display:block}@media (prefers-reduced-motion:reduce){.toast{transition:none}}</style>
+    <script type="module" crossorigin src="./assets/index-PAX4aytG.js"></script>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div class="top">
+      <div class="bar">
+        <button class="round" id="home" aria-label="Home">
+          <svg width="28" height="28" viewBox="-17 -18 34 34" fill="#fff"><path d="M-17 -2 17 -2 0 -18z" /><path d="M-12 -3h24v19h-7v-11h-10v11h-7z" /></svg>
+        </button>
+        <button id="wave" type="button"></button>
+        <button class="round" id="settings" aria-label="Settings">
+          <svg width="28" height="28" viewBox="-16 -16 32 32" fill="#fff"><path d="M-2.5-15h5l.8 4.2 3 1.3 3.6-2.4 3.5 3.5-2.4 3.6 1.3 3 4.2.8v5l-4.2.8-1.3 3 2.4 3.6-3.5 3.5-3.6-2.4-3 1.3-.8 4.2h-5l-.8-4.2-3-1.3-3.6 2.4-3.5-3.5 2.4-3.6-1.3-3-4.2-.8v-5l4.2-.8 1.3-3-2.4-3.6 3.5-3.5 3.6 2.4 3-1.3z" /><circle r="5" fill="#2b2d5c" /></svg>
+        </button>
+        <button class="round" id="help" aria-label="How to play"><span>?</span></button>
+      </div>
+      <div id="resources"></div>
+    </div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="panel"></div>
+    <div id="loading">Hex Hold<div><i></i></div></div>
+  </body>
+</html>
