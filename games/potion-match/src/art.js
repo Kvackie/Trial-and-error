@@ -8,16 +8,11 @@ export const POTIONS = [
   { key: 'emberGaleGreater', tint: 0xff5fc8 },
 ];
 
+// Names and descriptions are translated in strings.js ('<special>.name' etc.).
 export const SPECIAL_ART = {
-  bomb: { key: 'loamGaleGrand', glow: 0xff9f1c, name: 'Bomb', how: 'Match 4 in a row', does: 'Clears the 3×3 square around it.' },
-  cross: { key: 'murk', glow: 0xffffff, name: 'Cross', how: 'Match in an L or T shape', does: 'Clears its whole row and column.' },
-  rainbow: {
-    key: 'embertideElixir',
-    glow: 0xff5fc8,
-    name: 'Rainbow',
-    how: 'Match 5 in a row',
-    does: 'Swap it with a potion to clear every potion of that colour.',
-  },
+  bomb: { key: 'loamGaleGrand', glow: 0xff9f1c },
+  cross: { key: 'murk', glow: 0xffffff },
+  rainbow: { key: 'embertideElixir', glow: 0xff5fc8 },
 };
 
 export const artPath = (key) => `potions/${key}.png`;

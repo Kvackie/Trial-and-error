@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 // Dialogs shared by the games: plain HTML over the canvas so they scroll natively
 // and text wraps on any screen.
 //
@@ -61,7 +63,7 @@ export function showPanel({ title, html, accent = '#c77dff', heading = '#ffd23f'
   overlay.style.setProperty('--help-panel', panel);
   overlay.innerHTML = `
     <div class="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
-      ${closeButton ? '<button class="help-close" aria-label="Close">✕</button>' : ''}
+      ${closeButton ? `<button class="help-close" aria-label="${t('dialog.close')}">✕</button>` : ''}
       <h2 id="help-title">${title}</h2>
       ${html}
     </div>`;
@@ -92,7 +94,7 @@ export function openConfirmDialog({
   title,
   message,
   confirmLabel = 'OK',
-  cancelLabel = 'Cancel',
+  cancelLabel = t('dialog.cancel'),
   accent = '#c77dff',
   heading = '#ffd23f',
   panel = '#2a1550',

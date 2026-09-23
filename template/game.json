@@ -1,5 +1,10 @@
 {
   "name": "__NAME__",
   "description": "Describe the game in one sentence.",
-  "appId": "io.github.kvackie.trialanderror.__APPID__"
+  "appId": "io.github.kvackie.trialanderror.__APPID__",
+  "icon": "icon.svg",
+  "sv": {
+    "name": "__NAME__",
+    "description": "Beskriv spelet med en mening."
+  }
 }

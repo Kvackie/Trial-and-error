@@ -26,7 +26,7 @@ scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
 ```
 
-`game.json` holds the game's display name, a one-line description for the hub page, and its Android app ID (which must be unique per game).
+`game.json` holds the game's display name and a one-line description for the hub page (English, plus a Swedish `sv` block), its hub icon (a file in the game's `public/` folder, also used as the browser tab icon), and its Android app ID (which must be unique per game).
 
 ### Shared code
 
@@ -38,6 +38,10 @@ Games import these with `../../../shared/<file>` from their `src/` folder:
 | `shared/help-dialog.js` | `openHelpDialog()`: the scrollable "How to play" window opened by each game's **?** button. |
 | `shared/game-over-scene.js` | `createGameOverScene('<game>:best')`: score, best score and tap to play again. |
 | `shared/keyboard.js` | `bindKeys()`: the keyboard controls every game shares: W A S D to move or steer, Space to confirm or trigger the special action. |
+| `shared/i18n.js` | English and Swedish: `t()` for shared text, `makeT()` for a game's own `strings.js`, `bindText()` to keep Phaser text in the current language. The choice is stored once per device and followed by every game and the hub. |
+| `shared/settings.js` | `addSettingsButton()`: the gear button opening Settings with the language flags, sound on/off and volume. |
+| `shared/sound.js` | `playSound(name)`: sound effects synthesised with Web Audio (no audio files), respecting the volume and mute settings. |
+| `shared/flags.js` | The 🇬🇧 / 🇸🇪 flags as inline SVG, for the settings dialog and the hub. |
 | `shared/leaderboard.js` | The global leaderboard: `addTrophyButton()`, `openLeaderboard()` and `promptSubmit()`. Hidden when a build has no leaderboard address. |
 | `shared/home-button.js` | `addHomeButton()`: the round Home button at the top left of every game. Back to the hub on the website and in the all-games app; closes a single-game APK. |
 | `shared/android-back.js` | `handleAndroidBack()`: in the APKs, Android's Back button goes back a page (a game back to the hub in the all-games app) or closes the app. Every game calls it in `main.js`. |

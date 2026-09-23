@@ -30,6 +30,9 @@ how games here must be built. Read both before starting.
 - Every game has a round **Home** button at the **top left** of the header, made with
   `addHomeButton()` from `shared/home-button.js` (back to the hub, or closes a
   single-game APK).
+- Every game has a round **gear** button in the header, made with `addSettingsButton()`
+  from `shared/settings.js` (language flags, sound on/off, volume). Pause the game while
+  it is open.
 - Rules, controls, special pieces and scoring go in a **"How to play" dialog** behind a
   round **?** button in the header, built with `openHelpDialog()` from
   `shared/help-dialog.js`. Pause the game while it is open.
@@ -66,6 +69,15 @@ how games here must be built. Read both before starting.
   `shared/leaderboard.js`: a trophy button in the header and a submit prompt on a new
   best. Register the game in `leaderboard/src/rules.js`. Store nothing about players
   beyond a nickname and a random device id.
+- **Every piece of text exists in English and Swedish.** Put a game's strings in its
+  `src/strings.js` via `makeT()` from `shared/i18n.js`, write its help dialog in both
+  languages, and fill in the `sv` block in `game.json`. Text must follow a language
+  change live (`bindText()` / `onSceneLangChange()`); wrap long lines, since Swedish runs
+  longer.
+- Give every game sound effects through `playSound()` from `shared/sound.js` (add new
+  sounds there, synthesised, not as audio files), so volume and mute apply everywhere.
+- Every game has an icon in `public/` (named in `game.json`), shown on the hub and as the
+  browser tab icon.
 - Keep game rules separate from Phaser drawing code where the rules are non-trivial, so
   they can be tested on their own in Node (see `games/*/src/logic.js`).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules

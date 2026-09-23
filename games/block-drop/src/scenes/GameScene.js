@@ -5,6 +5,10 @@ import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
 import { addTrophyButton, openLeaderboard } from '../../../../shared/leaderboard.js';
 import { readBest } from '../../../../shared/game-over-scene.js';
+import { addSettingsButton } from '../../../../shared/settings.js';
+import { bindText, onSceneLangChange } from '../../../../shared/i18n.js';
+import { playSound } from '../../../../shared/sound.js';
+import { tr } from '../strings.js';
 
 const { Color } = Phaser.Display;
 const PALETTE = Object.values(PIECES).map((piece) => piece.color);
@@ -31,17 +35,18 @@ export class GameScene extends Phaser.Scene {
     const label = { fontFamily: 'sans-serif', color: '#ffffff' };
     this.scoreText = this.add.text(MARGIN + 84, this.top + 8, '', { ...label, fontSize: '52px', fontStyle: 'bold', color: '#ffd23f' });
     this.statsText = this.add.text(MARGIN + 84, this.top + 78, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
-    this.add.text(720 - MARGIN - 86, this.top + 2, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
+    bindText(this, this.add.text(720 - MARGIN - 86, this.top + 2, '', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0), () => tr('next'));
+    onSceneLangChange(this, () => this.redraw()); // stats line
 
     this.setUpButtons();
     this.setUpHelpButton();
     // Keyboard: A/D move, W rotates, Space drops. The scene pauses while help is
     // open, which also stops these.
     bindKeys(this, {
-      left: () => this.act(() => this.logic.moveLeft()),
-      right: () => this.act(() => this.logic.moveRight()),
-      up: () => this.act(() => this.logic.rotate()),
-      action: () => this.act(() => this.logic.hardDrop()),
+      left: () => this.act(() => this.logic.moveLeft(), 'move'),
+      right: () => this.act(() => this.logic.moveRight(), 'move'),
+      up: () => this.act(() => this.logic.rotate(), 'rotate'),
+      action: () => this.act(() => this.logic.hardDrop(), 'drop'),
     });
     this.redraw();
   }
@@ -71,12 +76,17 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
-    const x = 720 - MARGIN - 172 - 56;
-    const y = this.top + 92;
-    const button = this.add.circle(x, y, 32, 0x2b2d5c).setStrokeStyle(3, 0xe0e2ff).setInteractive({ useHandCursor: true });
-    this.add.text(x, y, '?', { fontFamily: 'sans-serif', fontSize: '40px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+    // Settings above help, both beside the next-piece box.
+    const x = 720 - MARGIN - 172 - 50;
+    const pause = () => this.scene.pause();
+    const resume = () => this.scene.resume();
+    addSettingsButton(this, x, this.top + 34, { radius: 28, theme: THEME, onOpen: pause, onClose: resume });
+    const y = this.top + 104;
+    const button = this.add.circle(x, y, 28, 0x2b2d5c).setStrokeStyle(3, 0xe0e2ff).setInteractive({ useHandCursor: true });
+    this.add.text(x, y, '?', { fontFamily: 'sans-serif', fontSize: '36px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
     button.on('pointerup', () => {
       // Freeze the game while the rules are open.
+      playSound('click');
       this.scene.pause();
       openHelp(() => this.scene.resume());
     });
@@ -84,10 +94,10 @@ export class GameScene extends Phaser.Scene {
 
   setUpButtons() {
     const buttons = [
-      { label: '◀', color: PIECES.J.color, action: () => this.logic.moveLeft(), repeat: true },
-      { label: '▶', color: PIECES.I.color, action: () => this.logic.moveRight(), repeat: true },
-      { label: '↻', color: PIECES.L.color, action: () => this.logic.rotate(), repeat: false },
-      { label: 'DROP', color: PIECES.Z.color, action: () => this.logic.hardDrop(), repeat: false },
+      { label: '◀', color: PIECES.J.color, action: () => this.logic.moveLeft(), sound: 'move', repeat: true },
+      { label: '▶', color: PIECES.I.color, action: () => this.logic.moveRight(), sound: 'move', repeat: true },
+      { label: '↻', color: PIECES.L.color, action: () => this.logic.rotate(), sound: 'rotate', repeat: false },
+      { label: () => tr('drop'), color: PIECES.Z.color, action: () => this.logic.hardDrop(), sound: 'drop', repeat: false },
     ];
 
     const gap = 12;
@@ -100,14 +110,15 @@ export class GameScene extends Phaser.Scene {
         .rectangle(x, this.buttonY, width, BUTTON_H, dark)
         .setStrokeStyle(3, spec.color)
         .setInteractive();
-      this.add
-        .text(x, this.buttonY, spec.label, {
+      const text = this.add
+        .text(x, this.buttonY, '', {
           fontFamily: 'sans-serif',
-          fontSize: spec.label.length > 1 ? '32px' : '48px',
+          fontSize: typeof spec.label === 'function' ? '32px' : '48px',
           fontStyle: 'bold',
           color: '#ffffff',
         })
         .setOrigin(0.5);
+      bindText(this, text, typeof spec.label === 'function' ? spec.label : () => spec.label);
 
       let timer = null;
       const release = () => {
@@ -118,11 +129,11 @@ export class GameScene extends Phaser.Scene {
 
       bg.on('pointerdown', () => {
         bg.setFillStyle(light);
-        this.act(spec.action);
+        this.act(spec.action, spec.sound);
         if (!spec.repeat) return;
         // Hold to repeat, after a short delay so single presses stay precise.
         timer = this.time.delayedCall(170, () => {
-          timer = this.time.addEvent({ delay: 55, loop: true, callback: () => this.act(spec.action) });
+          timer = this.time.addEvent({ delay: 55, loop: true, callback: () => this.act(spec.action, spec.sound) });
         });
       });
       bg.on('pointerup', release);
@@ -130,14 +141,19 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // Run a player action, then react to what it did to the board.
-  act(action) {
+  // Run a player action (or a gravity tick), then react to what it did to the board.
+  // sound plays if the action did something (moveLeft/Right and rotate return false
+  // when blocked).
+  act(action, sound) {
     if (this.logic.over) return;
     const linesBefore = this.logic.lines;
     const pieceBefore = this.logic.piece;
     const scoreBefore = this.logic.score;
-    action();
+    const result = action();
     const cleared = this.logic.lines - linesBefore;
+    if (sound && result !== false) playSound(sound);
+    else if (this.logic.piece !== pieceBefore && !this.logic.over) playSound('drop'); // landed on its own
+    if (cleared > 0) playSound('clear', { lines: cleared });
     if (cleared > 0) this.celebrate(this.logic.lastCleared, this.logic.score - scoreBefore);
     if (cleared >= 4) this.cameras.main.shake(150, 0.008);
     if (this.logic.piece !== pieceBefore && this.logic.piece.y <= 0) this.elapsed = 0;
@@ -218,7 +234,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.scoreText.setText(String(logic.score));
-    this.statsText.setText(`Level ${logic.level}  ·  Lines ${logic.lines}`);
+    this.statsText.setText(tr('stats', { level: logic.level, lines: logic.lines }));
   }
 
   // A bevelled block: light top-left edge, dark bottom-right edge, glossy highlight.

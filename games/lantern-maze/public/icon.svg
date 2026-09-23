@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><radialGradient id="glow" cx="0.5" cy="0.55" r="0.5"><stop offset="0" stop-color="#ffaa50" stop-opacity="0.75"/><stop offset="0.5" stop-color="#ff8c32" stop-opacity="0.25"/><stop offset="1" stop-color="#ff7820" stop-opacity="0"/></radialGradient></defs>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <circle cx="32" cy="35" r="26" fill="url(#glow)"/>
+  <!-- maze walls -->
+  <path d="M8 8 H56 V56 H40 M8 8 V56 H28 M20 20 H44 V44 M20 20 V44 H32" fill="none" stroke="#d4a93c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- stick figure with lantern -->
+  <g fill="none" stroke="#f5f1e6" stroke-width="2.2" stroke-linecap="round">
+    <circle cx="30" cy="27" r="3.2"/><path d="M30 30 V38 M30 32.5 L26 36 M30 32.5 L35 34 M30 38 L27 44 M30 38 L33 44"/>
+  </g>
+  <rect x="34.5" y="34" width="4" height="5" rx="1" fill="#ffb347" stroke="#d4a93c" stroke-width="1"/>
+</svg>

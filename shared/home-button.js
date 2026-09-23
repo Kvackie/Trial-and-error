@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { playSound } from './sound.js';
 
 // Leave the game:
 //   website            back to the hub page one folder up
@@ -32,6 +33,7 @@ export function addHomeButton(scene, x, y, { radius = 32, fill = 0x2b2d5c, strok
   g.fillRect(-4 * s, 5 * s, 8 * s, 11 * s); // door
   circle.on('pointerup', () => {
     if (onBeforeLeave?.() === false) return;
+    playSound('click');
     goHome();
   });
   return [circle, g];

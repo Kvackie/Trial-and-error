@@ -1,5 +1,10 @@
 {
   "name": "Block Drop",
   "description": "Stack falling blocks and clear full rows. Move, rotate and drop with the buttons.",
-  "appId": "io.github.kvackie.trialanderror.blockdrop"
+  "appId": "io.github.kvackie.trialanderror.blockdrop",
+  "icon": "icon.svg",
+  "sv": {
+    "name": "Blockfall",
+    "description": "Stapla fallande block och rensa hela rader. Flytta, vrid och släpp med knapparna."
+  }
 }

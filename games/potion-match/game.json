@@ -1,5 +1,10 @@
 {
   "name": "Potion Match",
   "description": "Swap potions to match three or more and make bombs, crosses and rainbows. Matches are free, misses cost a move: play well and it never ends.",
-  "appId": "io.github.kvackie.trialanderror.potionmatch"
+  "appId": "io.github.kvackie.trialanderror.potionmatch",
+  "icon": "icon.png",
+  "sv": {
+    "name": "Trolldrycker",
+    "description": "Byt plats på drycker för att matcha tre eller fler och skapa bomber, kors och regnbågar. Matchningar är gratis, missar kostar ett drag: spela väl så tar det aldrig slut."
+  }
 }

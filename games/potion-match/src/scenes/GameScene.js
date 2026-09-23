@@ -6,6 +6,10 @@ import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
 import { addTrophyButton, openLeaderboard } from '../../../../shared/leaderboard.js';
 import { readBest } from '../../../../shared/game-over-scene.js';
+import { addSettingsButton } from '../../../../shared/settings.js';
+import { bindText } from '../../../../shared/i18n.js';
+import { playSound } from '../../../../shared/sound.js';
+import { tr } from '../strings.js';
 
 const CELL = 87;
 const BOARD_SIZE = COLS * CELL;
@@ -60,9 +64,9 @@ export class GameScene extends Phaser.Scene {
   drawHud() {
     const y = this.hudY;
     const text = { fontFamily: 'sans-serif', color: '#ffffff' };
-    this.add.text(BOARD_X + 84, y, 'SCORE', { ...text, fontSize: '26px', color: '#e8dcff' });
+    bindText(this, this.add.text(BOARD_X + 84, y, '', { ...text, fontSize: '26px', color: '#e8dcff' }), () => tr('score'));
     this.scoreText = this.add.text(BOARD_X + 84, y + 32, '0', { ...text, fontSize: '68px', fontStyle: 'bold', color: '#ffd23f' });
-    this.add.text(720 - BOARD_X - 4, y, 'MOVES', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0);
+    bindText(this, this.add.text(720 - BOARD_X - 4, y, '', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0), () => tr('moves'));
     this.movesText = this.add
       .text(720 - BOARD_X - 4, y + 32, String(this.movesLeft), { ...text, fontSize: '68px', fontStyle: 'bold' })
       .setOrigin(1, 0);
@@ -72,7 +76,10 @@ export class GameScene extends Phaser.Scene {
     // Help button: opens the rules in a dialog so they stay off the playfield.
     const help = this.add.circle(360, y + 62, 34, 0x43207a).setStrokeStyle(3, 0xc77dff).setInteractive({ useHandCursor: true });
     this.add.text(360, y + 62, '?', { ...text, fontSize: '44px', fontStyle: 'bold' }).setOrigin(0.5);
-    help.on('pointerup', () => this.showHelp());
+    help.on('pointerup', () => {
+      playSound('click');
+      this.showHelp();
+    });
 
     addTrophyButton(this, 446, y + 62, {
       radius: 34,
@@ -80,6 +87,14 @@ export class GameScene extends Phaser.Scene {
       stroke: 0xc77dff,
       onClick: () =>
         this.pauseFor((onClose) => openLeaderboard({ game: 'potion-match', myBest: readBest('potion-match:best'), onClose })),
+    });
+
+    addSettingsButton(this, 532, y + 62, {
+      radius: 34,
+      fill: 0x43207a,
+      stroke: 0xc77dff,
+      onOpen: () => this.pauseBoard(),
+      onClose: () => this.resumeBoard(),
     });
   }
 
@@ -89,14 +104,20 @@ export class GameScene extends Phaser.Scene {
 
   // Freeze the board while a dialog is open. open(onClose) shows the dialog.
   pauseFor(open) {
+    this.pauseBoard();
+    open(() => this.resumeBoard());
+  }
+
+  pauseBoard() {
     this.select(null);
     this.pending = null;
     this.stopHint();
     this.input.enabled = false;
-    open(() => {
-      this.input.enabled = true;
-      if (!this.busy) this.restartHintTimer();
-    });
+  }
+
+  resumeBoard() {
+    this.input.enabled = true;
+    if (!this.busy) this.restartHintTimer();
   }
 
   drawBoardBackground() {
@@ -229,6 +250,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   select(cell) {
+    if (cell) playSound('select');
     this.selected = cell;
     if (!cell) {
       this.selection.setVisible(false);
@@ -250,6 +272,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!result.valid) {
       // Only a swap that makes no match costs a move, so good play can go on forever.
+      playSound('invalid');
       this.movesLeft--;
       this.movesText.setText(String(this.movesLeft));
       this.tweens.add({ targets: this.movesText, scale: 1.25, duration: 120, yoyo: true });
@@ -264,6 +287,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    playSound('swap');
     for (const step of result.steps) await this.animate(step, va, vb);
     this.busy = false;
     this.restartHintTimer();
@@ -293,6 +317,8 @@ export class GameScene extends Phaser.Scene {
 
   async animateClear({ removed, created, triggered, cascade, points }) {
     for (const blast of triggered) this.blastEffect(blast);
+    playSound(triggered.length ? 'blast' : 'match', { step: cascade });
+    if (created.length) this.time.delayedCall(120, () => playSound('special'));
 
     const pops = removed.map(({ r, c, piece }) => {
       const view = this.views.get(piece.id);
@@ -333,7 +359,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   async animateShuffle({ positions }) {
-    this.floatText({ x: 360, y: this.boardY + (ROWS * CELL) / 2 }, 'No moves - shuffling!', 1);
+    playSound('shuffle');
+    this.floatText({ x: 360, y: this.boardY + (ROWS * CELL) / 2 }, tr('shuffling'), 1);
     const keep = new Set(positions.map(({ piece }) => piece.id));
     for (const [id, view] of this.views) {
       if (!keep.has(id)) {

@@ -7,6 +7,8 @@
 //   openLeaderboard({ game, unit, myBest, theme, onClose })
 //   promptSubmit({ game, score, unit, theme, onClose })   "new best, add it?"
 import { showPanel } from './help-dialog.js';
+import { t } from './i18n.js';
+import { playSound } from './sound.js';
 
 const BASE = (import.meta.env.VITE_LEADERBOARD_URL ?? '').replace(/\/$/, '');
 export const leaderboardEnabled = Boolean(BASE);
@@ -62,7 +64,10 @@ export async function submitScore(game, score, name) {
     return { queued: true };
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return { error: data.error ?? 'The leaderboard is unavailable right now.' };
+  if (!response.ok) {
+    const key = response.status === 429 ? 'lb.tooMany' : response.status === 400 ? 'lb.rejected' : 'lb.unavailable';
+    return { error: t(key) };
+  }
   write(sentKey(game), String(Math.max(score, bestSubmitted(game))));
   return { rank: data.rank };
 }
@@ -98,12 +103,12 @@ const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Top scores, plus a button to send your own best if it hasn't been sent yet.
-export function openLeaderboard({ game, unit = 'Score', myBest = 0, theme = {}, onClose }) {
+export function openLeaderboard({ game, unit = t('unit.score'), myBest = 0, theme = {}, onClose }) {
   const { overlay, close } = showPanel({
     ...theme,
-    title: 'Leaderboard',
+    title: t('lb.title'),
     onClose,
-    html: `<div class="lb-body"><p class="help-status">Loading…</p></div>
+    html: `<div class="lb-body"><p class="help-status">${t('lb.loading')}</p></div>
       <div class="help-actions lb-actions" hidden><button class="help-danger lb-send"></button></div>`,
   });
   overlay.querySelector('.help-close').focus();
@@ -122,13 +127,13 @@ export function openLeaderboard({ game, unit = 'Score', myBest = 0, theme = {}, 
                 `<tr class="${s.name === me ? 'help-me' : ''}"><td>${i + 1}</td><td>${escapeHtml(s.name)}</td><td>${s.score}</td></tr>`,
             )
             .join('')}</tbody></table>`
-        : '<p class="help-status">No scores yet. Be the first!</p>';
+        : `<p class="help-status">${t('lb.empty')}</p>`;
     } catch {
-      body.innerHTML = '<p class="help-status">Couldn’t reach the leaderboard. Check your connection and try again.</p>';
+      body.innerHTML = `<p class="help-status">${t('lb.offline')}</p>`;
     }
     const unsent = myBest > bestSubmitted(game);
     actions.hidden = !unsent;
-    send.textContent = `Submit my best (${unit.toLowerCase()} ${myBest})`;
+    send.textContent = t('lb.submitBest', { unit: unit.toLowerCase(), score: myBest });
   };
 
   send.addEventListener('click', () => {
@@ -139,19 +144,19 @@ export function openLeaderboard({ game, unit = 'Score', myBest = 0, theme = {}, 
 }
 
 // Ask for a nickname and send a score.
-export function promptSubmit({ game, score, unit = 'Score', theme = {}, onClose }) {
+export function promptSubmit({ game, score, unit = t('unit.score'), theme = {}, onClose }) {
   const { overlay, close } = showPanel({
     ...theme,
-    title: 'New best!',
+    title: t('lb.newBest'),
     closeButton: false,
     onClose,
-    html: `<p>${escapeHtml(unit)} <b>${score}</b>. Add it to the global leaderboard?</p>
-      <label for="lb-name">Your name</label>
+    html: `<p>${t('lb.ask', { unit: escapeHtml(unit), score: `<b>${score}</b>` })}</p>
+      <label for="lb-name">${t('lb.name')}</label>
       <input id="lb-name" class="help-field" maxlength="12" autocomplete="nickname" enterkeyhint="send" />
       <p class="help-status" aria-live="polite"></p>
       <div class="help-actions">
-        <button class="help-cancel">Not now</button>
-        <button class="help-danger">Submit</button>
+        <button class="help-cancel">${t('lb.notNow')}</button>
+        <button class="help-danger">${t('lb.submit')}</button>
       </div>`,
   });
   const field = overlay.querySelector('#lb-name');
@@ -163,23 +168,19 @@ export function promptSubmit({ game, score, unit = 'Score', theme = {}, onClose 
   const send = async () => {
     const name = field.value.trim().replace(/\s+/g, ' ');
     if (!NAME.test(name)) {
-      status.textContent = 'Use 1 to 12 letters, digits, spaces, dots, dashes or underscores.';
+      status.textContent = t('lb.badName');
       return;
     }
     write(KEY.name, name);
     submit.disabled = true;
-    status.textContent = 'Sending…';
+    status.textContent = t('lb.sending');
     const result = await submitScore(game, score, name);
     if (result.error) {
       status.textContent = result.error;
       submit.disabled = false;
       return;
     }
-    status.textContent = result.queued
-      ? 'You’re offline. It will be sent when you’re back online.'
-      : result.rank
-        ? `You’re number ${result.rank}!`
-        : 'Sent! Not in the top 100 yet, keep going.';
+    status.textContent = result.queued ? t('lb.queued') : result.rank ? t('lb.rank', { rank: result.rank }) : t('lb.sent');
     setTimeout(close, 1400);
   };
 
@@ -203,6 +204,9 @@ export function addTrophyButton(scene, x, y, { radius = 32, fill = 0x2b2d5c, str
   g.fillCircle(0, -8 * s, 11 * s);
   g.fillRect(-2.5 * s, 2 * s, 5 * s, 8 * s); // stem
   g.fillRect(-9 * s, 10 * s, 18 * s, 5 * s); // base
-  circle.on('pointerup', () => onClick?.());
+  circle.on('pointerup', () => {
+    playSound('click');
+    onClick?.();
+  });
   return [circle, g];
 }

@@ -3,7 +3,11 @@ import { DIRS, E, N, S, W, dirByBit, generateMaze } from '../maze.js';
 import { makePuzzle } from '../puzzles.js';
 import { MAX_LIVES, isCheckpoint, loadProgress, resetProgress, saveProgress } from '../progress.js';
 import { openConfirmDialog, openHelpDialog } from '../../../../shared/help-dialog.js';
-import { HELP_HTML } from '../help.js';
+import { helpHtml } from '../help.js';
+import { tr } from '../strings.js';
+import { addSettingsButton } from '../../../../shared/settings.js';
+import { onSceneLangChange, t } from '../../../../shared/i18n.js';
+import { playSound } from '../../../../shared/sound.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
 import { addTrophyButton, bestSubmitted, leaderboardEnabled, openLeaderboard, promptSubmit } from '../../../../shared/leaderboard.js';
@@ -94,11 +98,13 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.centerOn(x, y);
     this.redraw();
     this.updateHud();
-    this.banner(isCheckpoint(level) ? `Level ${level}\nCheckpoint` : `Level ${level}`);
+    if (isCheckpoint(level)) playSound('checkpoint');
+    this.banner(tr(isCheckpoint(level) ? 'checkpointBanner' : 'level', { level }));
   }
 
   levelComplete() {
     this.modal = true;
+    playSound('levelUp');
     const { x, y } = this.cellCenter(this.maze.exit);
     const goblet = this.add.image(x, y, 'goblet').setDepth(3).setScale(0);
     this.items.push(goblet);
@@ -126,6 +132,7 @@ export class GameScene extends Phaser.Scene {
 
   loseRun() {
     this.modal = true;
+    playSound('gameOver');
     const back = this.progress.checkpoint;
     this.progress.level = back;
     this.progress.lives = MAX_LIVES;
@@ -135,12 +142,12 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     overlay.add(
       this.add
-        .text(width / 2, height / 2 - 70, 'Your lantern went out', { fontFamily: SERIF, fontSize: '46px', color: GOLD_CSS })
+        .text(width / 2, height / 2 - 70, tr('lanternOut'), { fontFamily: SERIF, fontSize: '46px', color: GOLD_CSS })
         .setOrigin(0.5),
     );
     overlay.add(
       this.add
-        .text(width / 2, height / 2 + 4, back === 1 ? 'Back to the beginning' : `Back to the checkpoint at level ${back}`, {
+        .text(width / 2, height / 2 + 4, back === 1 ? tr('backToStart') : tr('backToCheckpoint', { level: back }), {
           fontFamily: SERIF,
           fontSize: '32px',
           color: IVORY_CSS,
@@ -149,7 +156,7 @@ export class GameScene extends Phaser.Scene {
     );
     overlay.add(
       this.add
-        .text(width / 2, height / 2 + 90, 'Tap or press Space to continue', { fontFamily: SERIF, fontSize: '30px', color: MUTED_CSS })
+        .text(width / 2, height / 2 + 90, tr('continue'), { fontFamily: SERIF, fontSize: '30px', color: MUTED_CSS, align: 'center', wordWrap: { width: width - 140 } })
         .setOrigin(0.5),
     );
     let done = false;
@@ -168,7 +175,7 @@ export class GameScene extends Phaser.Scene {
     // Offer the deepest level to the leaderboard if it hasn't been sent yet.
     if (leaderboardEnabled && this.progress.best > bestSubmitted('lantern-maze')) {
       this.time.delayedCall(700, () =>
-        promptSubmit({ game: 'lantern-maze', score: this.progress.best, unit: 'Deepest level', theme: DIALOG_THEME }),
+        promptSubmit({ game: 'lantern-maze', score: this.progress.best, unit: t('unit.deepest'), theme: DIALOG_THEME }),
       );
     }
   }
@@ -190,6 +197,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.maze.canMove(this.pos.x, this.pos.y, bit)) {
       // Bump into the wall.
+      playSound('bump');
       const { x, y } = this.cellCenter(this.pos);
       this.moving = true;
       this.tweens.add({
@@ -205,6 +213,7 @@ export class GameScene extends Phaser.Scene {
 
     this.pos = { x: this.pos.x + dir.dx, y: this.pos.y + dir.dy };
     this.visited.add(this.key(this.pos));
+    playSound('step');
     const target = this.cellCenter(this.pos);
     this.moving = true;
     this.tweens.add({
@@ -322,10 +331,24 @@ export class GameScene extends Phaser.Scene {
 
     // Reset: small and tucked under the help button, and it always asks first.
     const reset = this.ui(
-      this.add.text(width - 24, 118, 'Reset', { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(1, 0.5),
+      this.add.text(width - 24, 118, tr('reset'), { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(1, 0.5),
     );
     reset.setInteractive({ hitArea: new Phaser.Geom.Rectangle(-12, -18, reset.width + 24, reset.height + 36), hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true });
     reset.on('pointerup', () => this.confirmReset());
+    onSceneLangChange(this, () => {
+      reset.setText(tr('reset'));
+      reset.input.hitArea.setTo(-12, -18, reset.width + 24, reset.height + 36);
+      this.updateHud();
+    });
+
+    addSettingsButton(this, width - 136, 60, {
+      fill: INK,
+      stroke: GOLD,
+      icon: GOLD,
+      theme: DIALOG_THEME,
+      onOpen: () => (this.modal = true),
+      onClose: () => (this.modal = false),
+    }).forEach((o) => this.ui(o));
 
     const help = this.ui(this.add.circle(width - 56, 60, 32, INK).setStrokeStyle(3, GOLD));
     this.ui(this.add.text(width - 56, 60, '?', { fontFamily: SERIF, fontSize: '40px', color: GOLD_CSS }).setOrigin(0.5));
@@ -333,8 +356,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateHud() {
-    this.levelText.setText(`Level ${this.progress.level}`);
-    this.bestText.setText(`Deepest ${this.progress.best}`);
+    this.levelText.setText(tr('level', { level: this.progress.level }));
+    this.bestText.setText(tr('deepest', { level: this.progress.best }));
     this.hearts.forEach((heart, i) => {
       const full = i < this.progress.lives;
       heart.setText(full ? '♥' : '♡').setColor(full ? '#ff9a3c' : '#4a453d');
@@ -416,7 +439,7 @@ export class GameScene extends Phaser.Scene {
     this.modal = true;
     openLeaderboard({
       game: 'lantern-maze',
-      unit: 'Level',
+      unit: t('unit.level'),
       myBest: this.progress.best,
       theme: DIALOG_THEME,
       onClose: () => (this.modal = false),
@@ -426,16 +449,17 @@ export class GameScene extends Phaser.Scene {
   showHelp() {
     if (this.modal) return;
     this.modal = true;
-    openHelpDialog({ title: 'How to play', html: HELP_HTML, ...DIALOG_THEME, onClose: () => (this.modal = false) });
+    playSound('click');
+    openHelpDialog({ title: t('help.title'), html: helpHtml(), ...DIALOG_THEME, onClose: () => (this.modal = false) });
   }
 
   confirmReset() {
     if (this.modal) return;
     this.modal = true;
     openConfirmDialog({
-      title: 'Start over?',
-      message: 'This clears every checkpoint and your deepest level, and sends you back to level 1.',
-      confirmLabel: 'Reset',
+      title: tr('resetTitle'),
+      message: tr('resetMessage'),
+      confirmLabel: tr('reset'),
       ...DIALOG_THEME,
       onClose: () => (this.modal = false),
       onConfirm: () => {
@@ -488,6 +512,7 @@ export class GameScene extends Phaser.Scene {
 
   openPuzzle() {
     this.modal = true;
+    playSound('chest');
     const { width, height } = this.scale;
     const panelHeight = 760;
     const top = height / 2 - panelHeight / 2;
@@ -497,7 +522,7 @@ export class GameScene extends Phaser.Scene {
     overlay.add(this.add.image(width / 2, top + 90, 'chest').setDisplaySize(120, 120));
     overlay.add(
       this.add
-        .text(width / 2, top + 178, 'A locked chest bars the way', { fontFamily: SERIF, fontSize: '30px', color: IVORY_CSS })
+        .text(width / 2, top + 178, tr('chest'), { fontFamily: SERIF, fontSize: '30px', color: IVORY_CSS })
         .setOrigin(0.5),
     );
     const question = this.add.text(width / 2, top + 268, '', { fontFamily: SERIF, fontSize: '68px', color: '#ffffff' }).setOrigin(0.5);
@@ -548,6 +573,7 @@ export class GameScene extends Phaser.Scene {
       answered = true;
       const { bg, label } = buttons[i];
       if (puzzle.options[i] === puzzle.answer) {
+        playSound('correct');
         bg.setFillStyle(GOLD);
         label.setColor('#0d0b09');
         this.solved.add(this.key(this.pos));
@@ -559,6 +585,7 @@ export class GameScene extends Phaser.Scene {
         });
       } else {
         // Wrong pick in red, the right answer in green, for a couple of seconds.
+        playSound('wrong');
         bg.setFillStyle(WRONG).setStrokeStyle(4, WRONG_EDGE);
         label.setColor('#ffffff');
         const right = buttons.find((_, j) => puzzle.options[j] === puzzle.answer);
