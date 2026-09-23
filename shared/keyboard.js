@@ -4,7 +4,10 @@
 //
 // bindKeys(scene, { up, left, down, right, action }, isBlocked)
 //   Handlers are optional. Holding a direction repeats it (the OS key repeat);
-//   holding Space fires once. isBlocked() can pause keys, e.g. while a dialog is open.
+//   holding Space fires once. Keys pause while any shared dialog is open (so typing a
+//   name doesn't move the game); isBlocked() can pause them for other reasons.
+import { isDialogOpen } from './help-dialog.js';
+
 const KEYS = { up: 'W', left: 'A', down: 'S', right: 'D', action: 'SPACE' };
 
 export function bindKeys(scene, handlers, isBlocked = () => false) {
@@ -14,7 +17,7 @@ export function bindKeys(scene, handlers, isBlocked = () => false) {
     const handler = handlers[name];
     if (!handler) continue;
     keyboard.on(`keydown-${key}`, (event) => {
-      if (isBlocked() || (name === 'action' && event.repeat)) return;
+      if (isDialogOpen() || isBlocked() || (name === 'action' && event.repeat)) return;
       handler(event);
     });
   }

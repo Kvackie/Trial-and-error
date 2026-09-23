@@ -13,7 +13,7 @@ const game = new Phaser.Game({
   parent: 'game',
   transparent: true,
   scale: scaleConfig(),
-  scene: [GameScene, createGameOverScene('potion-match:best')],
+  scene: [GameScene, createGameOverScene('potion-match:best', 'Game', { leaderboard: { game: 'potion-match' } })],
 });
 
 // Handy for poking at the game from the browser console during development.

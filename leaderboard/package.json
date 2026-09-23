@@ -1,0 +1,12 @@
+{
+  "name": "trial-and-error-leaderboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.136.3"
+  }
+}

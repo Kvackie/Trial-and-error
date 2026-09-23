@@ -1,10 +1,11 @@
 import { openHelpDialog } from '../../../shared/help-dialog.js';
 
+export const THEME = { accent: '#4d7cff', panel: '#161a3d' };
+
 export function openHelp(onClose) {
   openHelpDialog({
     title: 'How to play',
-    accent: '#4d7cff',
-    panel: '#161a3d',
+    ...THEME,
     onClose,
     html: `
       <ul>

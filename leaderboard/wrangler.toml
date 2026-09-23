@@ -1,0 +1,11 @@
+# Leaderboard service for the games. Deployed by .github/workflows/leaderboard.yml.
+name = "trial-and-error-leaderboard"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trial-and-error-leaderboard"
+# Filled in by the deploy workflow (it creates the database on first run).
+database_id = "DATABASE_ID"

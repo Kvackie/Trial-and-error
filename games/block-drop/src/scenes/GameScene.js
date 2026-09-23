@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { BlockDropGame, COLS, PIECES, ROWS } from '../logic.js';
-import { openHelp } from '../help.js';
+import { THEME, openHelp } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
+import { addTrophyButton, openLeaderboard } from '../../../../shared/leaderboard.js';
+import { readBest } from '../../../../shared/game-over-scene.js';
 
 const { Color } = Phaser.Display;
 const PALETTE = Object.values(PIECES).map((piece) => piece.color);
@@ -62,6 +64,12 @@ export class GameScene extends Phaser.Scene {
 
   setUpHelpButton() {
     addHomeButton(this, MARGIN + 32, this.top + 50);
+    addTrophyButton(this, MARGIN + 32, this.top + 124, {
+      onClick: () => {
+        this.scene.pause();
+        openLeaderboard({ game: 'block-drop', myBest: readBest('block-drop:best'), theme: THEME, onClose: () => this.scene.resume() });
+      },
+    });
 
     const x = 720 - MARGIN - 172 - 56;
     const y = this.top + 92;

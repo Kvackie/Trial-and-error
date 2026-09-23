@@ -52,6 +52,26 @@ jobs:
           cache: npm
       - run: npm ci
 
+      # Bakes the leaderboard's address into the games (VITE_LEADERBOARD_URL). Without the
+      # Cloudflare secrets the games simply build without a leaderboard.
+      - name: Find the leaderboard address
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "No Cloudflare secrets: building without the leaderboard."
+            exit 0
+          fi
+          sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain // empty') || true
+          if [ -z "$sub" ]; then
+            echo "::warning::Could not look up the workers.dev subdomain: building without the leaderboard."
+            exit 0
+          fi
+          echo "Leaderboard: https://trial-and-error-leaderboard.$sub.workers.dev"
+          echo "VITE_LEADERBOARD_URL=https://trial-and-error-leaderboard.$sub.workers.dev" >> "$GITHUB_ENV"
+
       - name: Work out which games to build
         id: games
         env:
@@ -169,6 +189,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - run: npm ci
+      # Bakes the leaderboard's address into the games (VITE_LEADERBOARD_URL). Without the
+      # Cloudflare secrets the games simply build without a leaderboard.
+      - name: Find the leaderboard address
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "No Cloudflare secrets: building without the leaderboard."
+            exit 0
+          fi
+          sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain // empty') || true
+          if [ -z "$sub" ]; then
+            echo "::warning::Could not look up the workers.dev subdomain: building without the leaderboard."
+            exit 0
+          fi
+          echo "Leaderboard: https://trial-and-error-leaderboard.$sub.workers.dev"
+          echo "VITE_LEADERBOARD_URL=https://trial-and-error-leaderboard.$sub.workers.dev" >> "$GITHUB_ENV"
       - run: npm run android:hub
 
       - name: Decode signing keystore

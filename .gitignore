@@ -7,3 +7,4 @@ dist/
 capacitor.config.json
 dist-app/
 .hub-app/
+.wrangler/

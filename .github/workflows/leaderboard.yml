@@ -1,0 +1,73 @@
+name: Deploy leaderboard
+
+# Started manually from the Actions tab. Deploys the leaderboard service in
+# leaderboard/ to Cloudflare: creates its D1 database the first time, applies the
+# table layout (safe to repeat), then deploys the Worker. Needs the repo secrets
+# CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leaderboard
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: leaderboard
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+      DATABASE: trial-and-error-leaderboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: leaderboard/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+      - name: Find or create the database
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          id=$(curl -fsS -H "$auth" "$api?name=$DATABASE" | jq -r --arg name "$DATABASE" '.result[] | select(.name == $name) | .uuid' | head -1)
+          if [ -z "$id" ]; then
+            echo "Creating D1 database $DATABASE"
+            id=$(curl -fsS -X POST -H "$auth" -H 'Content-Type: application/json' \
+              --data "$(jq -nc --arg name "$DATABASE" '{name: $name}')" "$api" | jq -r '.result.uuid')
+          fi
+          if [ -z "$id" ] || [ "$id" = null ]; then echo "::error::Could not find or create the database"; exit 1; fi
+          echo "Database id: $id"
+          sed -i "s/DATABASE_ID/$id/" wrangler.toml
+
+      - name: Apply the table layout
+        run: npx wrangler d1 execute "$DATABASE" --remote --file schema.sql
+
+      - name: Deploy the Worker
+        run: npx wrangler deploy
+
+      - name: Check it answers
+        run: |
+          sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain')
+          url="https://trial-and-error-leaderboard.$sub.workers.dev"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS "$url/scores?game=block-drop" >/dev/null; then
+              echo "Leaderboard is live at $url" >> "$GITHUB_STEP_SUMMARY"
+              echo "Leaderboard is live at $url"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$url did not answer"
+          exit 1

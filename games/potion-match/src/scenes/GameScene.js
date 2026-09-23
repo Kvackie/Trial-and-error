@@ -4,6 +4,8 @@ import { POTIONS, SPECIAL_ART, artPath } from '../art.js';
 import { openHelp } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
+import { addTrophyButton, openLeaderboard } from '../../../../shared/leaderboard.js';
+import { readBest } from '../../../../shared/game-over-scene.js';
 
 const CELL = 87;
 const BOARD_SIZE = COLS * CELL;
@@ -71,14 +73,27 @@ export class GameScene extends Phaser.Scene {
     const help = this.add.circle(360, y + 62, 34, 0x43207a).setStrokeStyle(3, 0xc77dff).setInteractive({ useHandCursor: true });
     this.add.text(360, y + 62, '?', { ...text, fontSize: '44px', fontStyle: 'bold' }).setOrigin(0.5);
     help.on('pointerup', () => this.showHelp());
+
+    addTrophyButton(this, 446, y + 62, {
+      radius: 34,
+      fill: 0x43207a,
+      stroke: 0xc77dff,
+      onClick: () =>
+        this.pauseFor((onClose) => openLeaderboard({ game: 'potion-match', myBest: readBest('potion-match:best'), onClose })),
+    });
   }
 
   showHelp() {
+    this.pauseFor(openHelp);
+  }
+
+  // Freeze the board while a dialog is open. open(onClose) shows the dialog.
+  pauseFor(open) {
     this.select(null);
     this.pending = null;
     this.stopHint();
     this.input.enabled = false;
-    openHelp(() => {
+    open(() => {
       this.input.enabled = true;
       if (!this.busy) this.restartHintTimer();
     });

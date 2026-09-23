@@ -20,6 +20,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 ```
 games/<game>/      one folder per game: index.html, src/, public/, game.json
 template/          starting point copied by `npm run new-game`
+leaderboard/       global leaderboard service (Cloudflare Worker + D1 database)
 shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
@@ -37,6 +38,7 @@ Games import these with `../../../shared/<file>` from their `src/` folder:
 | `shared/help-dialog.js` | `openHelpDialog()`: the scrollable "How to play" window opened by each game's **?** button. |
 | `shared/game-over-scene.js` | `createGameOverScene('<game>:best')`: score, best score and tap to play again. |
 | `shared/keyboard.js` | `bindKeys()`: the keyboard controls every game shares: W A S D to move or steer, Space to confirm or trigger the special action. |
+| `shared/leaderboard.js` | The global leaderboard: `addTrophyButton()`, `openLeaderboard()` and `promptSubmit()`. Hidden when a build has no leaderboard address. |
 | `shared/home-button.js` | `addHomeButton()`: the round Home button at the top left of every game. Back to the hub on the website and in the all-games app; closes a single-game APK. |
 | `shared/android-back.js` | `handleAndroidBack()`: in the APKs, Android's Back button goes back a page (a game back to the hub in the all-games app) or closes the app. Every game calls it in `main.js`. |
 
@@ -85,3 +87,34 @@ npm run android -- block-drop    # one game as its own app
 npm run android:hub              # or: every game in one app (built into dist-app/)
 cd android && ./gradlew assembleRelease
 ```
+
+## Leaderboard
+
+A global top-scores list per game, reached from the trophy button in each game. A new
+best offers to go on it under a nickname (remembered on the device). Offline scores in
+the APKs are sent when the device is back online.
+
+- **Service:** `leaderboard/` is a Cloudflare Worker with a D1 database. It accepts scores
+  only from the published site, the Android apps and local development, rejects
+  impossible scores, allows one score per device every 15 seconds, and keeps the top 100
+  per game. It stores the nickname, score, date and a random device id; network
+  addresses are only kept as a salted hash for an hour, for rate limiting.
+- **Deploy it:** **Actions → Deploy leaderboard → Run workflow**. The first run creates
+  the database. Needs the repo secrets `CLOUDFLARE_API_TOKEN` (Workers and D1 edit
+  rights) and `CLOUDFLARE_ACCOUNT_ID`.
+- **Connecting the games:** the build workflow looks up the service's address with the
+  same secrets and builds it into the games. Rebuild the games after the first deploy.
+- **Adding a game:** add it to `GAMES` in `leaderboard/src/rules.js` (with a maximum
+  believable score), redeploy, and add a trophy button plus a `leaderboard` option on its
+  Game Over screen.
+- **Removing a bad score:** Cloudflare dashboard → Storage & Databases → D1 →
+  `trial-and-error-leaderboard` → Console, e.g.
+  `DELETE FROM scores WHERE game = 'block-drop' AND name = 'Cheater';`
+- **Local development:**
+  ```sh
+  cd leaderboard && npm install && npm test
+  npx wrangler d1 execute trial-and-error-leaderboard --local --file schema.sql
+  npx wrangler dev --port 8787
+  # in another terminal, from the repo root:
+  VITE_LEADERBOARD_URL=http://127.0.0.1:8787 npm run dev -- block-drop
+  ```

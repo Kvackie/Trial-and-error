@@ -6,6 +6,7 @@ import { openConfirmDialog, openHelpDialog } from '../../../../shared/help-dialo
 import { HELP_HTML } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
 import { addHomeButton } from '../../../../shared/home-button.js';
+import { addTrophyButton, bestSubmitted, leaderboardEnabled, openLeaderboard, promptSubmit } from '../../../../shared/leaderboard.js';
 
 // Black and white, gold accents, warm orange lantern light.
 const INK = 0x000000;
@@ -158,6 +159,12 @@ export class GameScene extends Phaser.Scene {
       this.input.once('pointerup', carryOn);
       this.keyTarget = { confirm: carryOn };
     });
+    // Offer the deepest level to the leaderboard if it hasn't been sent yet.
+    if (leaderboardEnabled && this.progress.best > bestSubmitted('lantern-maze')) {
+      this.time.delayedCall(700, () =>
+        promptSubmit({ game: 'lantern-maze', score: this.progress.best, unit: 'Deepest level', theme: DIALOG_THEME }),
+      );
+    }
   }
 
   // --- Moving --------------------------------------------------------------------
@@ -305,6 +312,7 @@ export class GameScene extends Phaser.Scene {
     );
 
     addHomeButton(this, 56, 60, { fill: INK, stroke: GOLD, icon: GOLD, onBeforeLeave: () => !this.modal }).forEach((o) => this.ui(o));
+    addTrophyButton(this, 136, 60, { fill: INK, stroke: GOLD, icon: GOLD, onClick: () => this.showLeaderboard() }).forEach((o) => this.ui(o));
 
     // Reset: small and tucked under the help button, and it always asks first.
     const reset = this.ui(
@@ -394,6 +402,18 @@ export class GameScene extends Phaser.Scene {
       down: direction(S, 0, 1),
       right: direction(E, 1, 0),
       action: () => this.keyTarget?.confirm?.(),
+    });
+  }
+
+  showLeaderboard() {
+    if (this.modal) return;
+    this.modal = true;
+    openLeaderboard({
+      game: 'lantern-maze',
+      unit: 'Level',
+      myBest: this.progress.best,
+      theme: DIALOG_THEME,
+      onClose: () => (this.modal = false),
     });
   }
 

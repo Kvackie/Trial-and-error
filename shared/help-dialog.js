@@ -25,6 +25,16 @@ const STYLE = `
 .help-actions button { flex: 1; min-height: 48px; border-radius: 10px; font-size: 17px; font-weight: 600; cursor: pointer;
   border: 2px solid var(--help-accent); background: transparent; color: #fff; }
 .help-actions .help-danger { background: var(--help-accent); color: #111; }
+.help-actions[hidden] { display: none; }
+.help-actions button:disabled { opacity: 0.5; cursor: default; }
+.help-field { width: 100%; box-sizing: border-box; min-height: 48px; margin: 8px 0 4px; padding: 0 12px; border-radius: 10px;
+  border: 2px solid var(--help-accent); background: rgba(0, 0, 0, 0.35); color: #fff; font-size: 18px; }
+.help-status { min-height: 22px; margin: 8px 0 0; opacity: 0.9; }
+.help-table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-size: 16px; }
+.help-table td { padding: 7px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.help-table td:first-child { width: 2.5em; opacity: 0.7; }
+.help-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.help-table tr.help-me td { color: var(--help-heading); }
 .help-close { position: sticky; top: 0; float: right; margin: -8px -8px 0 0; width: 40px; height: 40px;
   border-radius: 50%; border: 2px solid var(--help-accent); background: var(--help-panel); color: #fff;
   font-size: 20px; cursor: pointer; }
@@ -38,8 +48,11 @@ function injectStyle() {
   document.head.append(style);
 }
 
-// Shows a panel over the game and returns a function that closes it.
-function showPanel({ title, html, accent, heading, panel, closeButton, onClose }) {
+// True while any dialog is open; shared/keyboard.js pauses game keys then.
+export const isDialogOpen = () => Boolean(document.querySelector('.help-overlay'));
+
+// Shows a panel over the game and returns { overlay, close }.
+export function showPanel({ title, html, accent = '#c77dff', heading = '#ffd23f', panel = '#2a1550', closeButton = true, onClose }) {
   injectStyle();
   const overlay = document.createElement('div');
   overlay.className = 'help-overlay';
@@ -54,12 +67,13 @@ function showPanel({ title, html, accent, heading, panel, closeButton, onClose }
     </div>`;
 
   let closed = false;
-  const close = () => {
+  // close({ silent: true }) skips onClose, for handing over to another dialog.
+  const close = ({ silent } = {}) => {
     if (closed) return;
     closed = true;
     overlay.remove();
     document.removeEventListener('keydown', onKey);
-    onClose?.();
+    if (!silent) onClose?.();
   };
   const onKey = (event) => event.key === 'Escape' && close();
   overlay.addEventListener('click', (event) => event.target === overlay && close());

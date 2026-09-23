@@ -62,6 +62,10 @@ how games here must be built. Read both before starting.
   in the APKs (the template already does).
 - Link and load files by relative path (`./…`, as Vite's `base: './'` does). Games run
   from a sub-folder on the website and inside the hub app.
+- Games with a score (or a "deepest level") use the global leaderboard from
+  `shared/leaderboard.js`: a trophy button in the header and a submit prompt on a new
+  best. Register the game in `leaderboard/src/rules.js`. Store nothing about players
+  beyond a nickname and a random device id.
 - Keep game rules separate from Phaser drawing code where the rules are non-trivial, so
   they can be tested on their own in Node (see `games/*/src/logic.js`).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules
