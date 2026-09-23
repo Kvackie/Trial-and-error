@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BlockDropGame, COLS, PIECES, ROWS } from '../logic.js';
 import { openHelp } from '../help.js';
+import { bindKeys } from '../../../../shared/keyboard.js';
 
 const { Color } = Phaser.Display;
 const PALETTE = Object.values(PIECES).map((piece) => piece.color);
@@ -31,6 +32,14 @@ export class GameScene extends Phaser.Scene {
 
     this.setUpButtons();
     this.setUpHelpButton();
+    // Keyboard: A/D move, W rotates, Space drops. The scene pauses while help is
+    // open, which also stops these.
+    bindKeys(this, {
+      left: () => this.act(() => this.logic.moveLeft()),
+      right: () => this.act(() => this.logic.moveRight()),
+      up: () => this.act(() => this.logic.rotate()),
+      action: () => this.act(() => this.logic.hardDrop()),
+    });
     this.redraw();
   }
 
@@ -66,8 +75,8 @@ export class GameScene extends Phaser.Scene {
     const buttons = [
       { label: '◀', color: PIECES.J.color, action: () => this.logic.moveLeft(), repeat: true },
       { label: '▶', color: PIECES.I.color, action: () => this.logic.moveRight(), repeat: true },
-      { label: 'DROP', color: PIECES.Z.color, action: () => this.logic.hardDrop(), repeat: false },
       { label: '↻', color: PIECES.L.color, action: () => this.logic.rotate(), repeat: false },
+      { label: 'DROP', color: PIECES.Z.color, action: () => this.logic.hardDrop(), repeat: false },
     ];
 
     const gap = 12;

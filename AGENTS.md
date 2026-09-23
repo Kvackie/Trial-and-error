@@ -8,9 +8,12 @@ how games here must be built. Read both before starting.
 
 - Design every game for a **phone held upright, played by touch**. Desktop must work,
   but it is the second target: never trade phone playability for desktop polish.
-- Controls are touch controls: taps, swipes or on-screen buttons. Keep touch targets
-  large (about 100 game units or more). Nothing may depend on hover or a keyboard.
-  Only add keyboard shortcuts if they're asked for, and only on top of touch controls.
+- Controls are touch controls first: taps, swipes or on-screen buttons. Keep touch
+  targets large (about 100 game units or more). Nothing may depend on hover or a keyboard.
+- Every game also gets keyboard controls on top, using the same keys everywhere via
+  `bindKeys()` from `shared/keyboard.js`: **W A S D** to move or steer a focus/cursor,
+  **Space** to confirm or trigger the special action. No arrow keys. Mention the keys in
+  the game's help dialog.
 - Check every change at a phone size (390 × 844 CSS pixels) first, then at a desktop
   size (1280 × 720).
 

@@ -16,6 +16,7 @@ export function openHelp(onClose) {
       <div class="help-row"><b style="width:56px;text-align:center">◀ ▶</b><span>Move the block left or right. Hold to keep moving.</span></div>
       <div class="help-row"><b style="width:56px;text-align:center">↻</b><span>Rotate the block.</span></div>
       <div class="help-row"><b style="width:56px;text-align:center">DROP</b><span>Drop the block straight down.</span></div>
+      <p>On a computer: <b>A</b> / <b>D</b> move, <b>W</b> rotates and <b>Space</b> drops.</p>
       <p>The faint outline on the board shows where the block will land, and the box at the top shows the next block.</p>
       <h3>Scoring</h3>
       <ul>

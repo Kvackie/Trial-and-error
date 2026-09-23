@@ -17,6 +17,8 @@ export function openHelp(onClose) {
       <ul>
         <li>Swap two neighbouring potions to line up <b>3 or more</b> of the same colour.</li>
         <li>Swipe a potion towards its neighbour, or tap one potion and then the other.</li>
+        <li>On a computer: <b>W A S D</b> move the gold cursor, <b>Space</b> picks up the potion under it, then
+          <b>W A S D</b> swaps it that way.</li>
         <li>Swaps that make a match are free. A swap that <b>doesn't</b> make a match slides back and costs a move.</li>
         <li>You start with <b>${MOVES} moves</b>. When they're gone the game ends, so a careful player can keep going forever.</li>
         <li>Stuck? After a few seconds a possible move starts to wiggle.</li>

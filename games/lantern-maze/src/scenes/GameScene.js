@@ -4,6 +4,7 @@ import { makePuzzle } from '../puzzles.js';
 import { MAX_LIVES, isCheckpoint, loadProgress, resetProgress, saveProgress } from '../progress.js';
 import { openConfirmDialog, openHelpDialog } from '../../../../shared/help-dialog.js';
 import { HELP_HTML } from '../help.js';
+import { bindKeys } from '../../../../shared/keyboard.js';
 
 // Black and white, gold accents, warm orange lantern light.
 const INK = 0x000000;
@@ -39,6 +40,7 @@ export class GameScene extends Phaser.Scene {
     this.progress = loadProgress();
     this.modal = false;
     this.moving = false;
+    this.keyTarget = null; // puzzle or lose screen taking the keys
     this.makeGlowTexture();
 
     this.floor = this.add.graphics().setDepth(0);
@@ -52,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.buildHud();
     this.buildPad();
     this.setUpSwipe();
+    this.setUpKeys();
 
     const mazeTop = HUD_H;
     const mazeBottom = this.scale.height - PAD_H;
@@ -138,15 +141,21 @@ export class GameScene extends Phaser.Scene {
     );
     overlay.add(
       this.add
-        .text(width / 2, height / 2 + 90, 'Tap to continue', { fontFamily: SERIF, fontSize: '30px', color: MUTED_CSS })
+        .text(width / 2, height / 2 + 90, 'Tap or press Space to continue', { fontFamily: SERIF, fontSize: '30px', color: MUTED_CSS })
         .setOrigin(0.5),
     );
+    let done = false;
+    const carryOn = () => {
+      if (done) return;
+      done = true;
+      this.keyTarget = null;
+      overlay.destroy();
+      this.startLevel();
+      this.modal = false;
+    };
     this.time.delayedCall(500, () => {
-      this.input.once('pointerup', () => {
-        overlay.destroy();
-        this.startLevel();
-        this.modal = false;
-      });
+      this.input.once('pointerup', carryOn);
+      this.keyTarget = { confirm: carryOn };
     });
   }
 
@@ -368,6 +377,23 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerup', () => (this.swipe = null));
   }
 
+  // WASD walks, or moves the highlight between a puzzle's answers; Space picks the
+  // highlighted answer or carries on after the lantern goes out. While a puzzle or
+  // that screen is up, keyTarget receives the keys instead of the player.
+  setUpKeys() {
+    const direction = (bit, dx, dy) => () => {
+      if (this.keyTarget) this.keyTarget.move?.(dx, dy);
+      else this.tryMove(bit);
+    };
+    bindKeys(this, {
+      up: direction(N, 0, -1),
+      left: direction(W, -1, 0),
+      down: direction(S, 0, 1),
+      right: direction(E, 1, 0),
+      action: () => this.keyTarget?.confirm?.(),
+    });
+  }
+
   showHelp() {
     if (this.modal) return;
     this.modal = true;
@@ -462,6 +488,10 @@ export class GameScene extends Phaser.Scene {
 
     let puzzle;
     let answered = false;
+    let focus = null; // keyboard highlight, 0-3 in reading order
+    const showFocus = () =>
+      buttons.forEach(({ bg }, i) => bg.setStrokeStyle(i === focus ? 6 : 3, i === focus ? IVORY : GOLD));
+
     const ask = () => {
       puzzle = makePuzzle(this.progress.level);
       answered = false;
@@ -471,42 +501,54 @@ export class GameScene extends Phaser.Scene {
         bg.setFillStyle(0x16120d);
         label.setText(formatOption(puzzle.options[i])).setColor(IVORY_CSS);
       });
+      showFocus();
     };
 
-    buttons.forEach(({ bg, label }, i) => {
-      bg.on('pointerup', () => {
+    this.keyTarget = {
+      move: (dx, dy) => {
         if (answered) return;
-        answered = true;
-        if (puzzle.options[i] === puzzle.answer) {
-          bg.setFillStyle(GOLD);
-          label.setColor('#0d0b09');
-          this.solved.add(this.key(this.pos));
-          this.time.delayedCall(450, () => {
-            overlay.destroy();
-            this.redraw();
-            this.modal = false;
-          });
-        } else {
-          bg.setFillStyle(0x7a2e12);
-          buttons.find((_, j) => puzzle.options[j] === puzzle.answer).bg.setStrokeStyle(4, GOLD);
-          this.cameras.main.shake(160, 0.006);
-          this.progress.lives--;
-          saveProgress(this.progress);
-          this.updateHud();
-          lives.setText(`${'♥'.repeat(this.progress.lives)}${'♡'.repeat(MAX_LIVES - this.progress.lives)}`);
-          this.time.delayedCall(900, () => {
-            buttons.forEach(({ bg: b }) => b.setStrokeStyle(3, GOLD));
-            if (this.progress.lives <= 0) {
-              overlay.destroy();
-              this.loseRun();
-            } else {
-              ask();
-            }
-          });
-        }
-      });
-    });
+        if (focus === null) focus = 0;
+        else focus = Math.min(1, Math.max(0, (focus % 2) + dx)) + 2 * Math.min(1, Math.max(0, Math.floor(focus / 2) + dy));
+        showFocus();
+      },
+      confirm: () => focus !== null && choose(focus),
+    };
 
+    const choose = (i) => {
+      if (answered) return;
+      answered = true;
+      const { bg, label } = buttons[i];
+      if (puzzle.options[i] === puzzle.answer) {
+        bg.setFillStyle(GOLD);
+        label.setColor('#0d0b09');
+        this.solved.add(this.key(this.pos));
+        this.time.delayedCall(450, () => {
+          this.keyTarget = null;
+          overlay.destroy();
+          this.redraw();
+          this.modal = false;
+        });
+      } else {
+        bg.setFillStyle(0x7a2e12);
+        buttons.find((_, j) => puzzle.options[j] === puzzle.answer).bg.setStrokeStyle(4, GOLD);
+        this.cameras.main.shake(160, 0.006);
+        this.progress.lives--;
+        saveProgress(this.progress);
+        this.updateHud();
+        lives.setText(`${'♥'.repeat(this.progress.lives)}${'♡'.repeat(MAX_LIVES - this.progress.lives)}`);
+        this.time.delayedCall(900, () => {
+          if (this.progress.lives <= 0) {
+            this.keyTarget = null;
+            overlay.destroy();
+            this.loseRun();
+          } else {
+            ask();
+          }
+        });
+      }
+    };
+
+    buttons.forEach(({ bg }, i) => bg.on('pointerup', () => choose(i)));
     ask();
   }
 }

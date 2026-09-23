@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
+import { bindKeys } from './keyboard.js';
 
 // Game Over screen shared by the games: score, best score (kept per game in
-// localStorage) and tap to play again. Start it with scene.start('GameOver', { score }).
+// localStorage) and tap (or Space) to play again. Start it with scene.start('GameOver', { score }).
 export function createGameOverScene(bestKey, restartScene = 'Game') {
   return class GameOverScene extends Phaser.Scene {
     constructor() {
@@ -19,13 +20,15 @@ export function createGameOverScene(bestKey, restartScene = 'Game') {
         .text(width / 2, height * 0.47, `Score: ${score}\nBest: ${best}`, { ...style, fontSize: '52px' })
         .setOrigin(0.5);
       this.add
-        .text(width / 2, height * 0.65, 'Tap to play again', { ...style, fontSize: '44px', color: '#ffd166' })
+        .text(width / 2, height * 0.65, 'Tap or press Space to play again', { ...style, fontSize: '38px', color: '#ffd166' })
         .setOrigin(0.5);
 
       // Short delay so a tap still in flight from the last move doesn't restart instantly.
-      this.time.delayedCall(400, () => {
-        this.input.once('pointerdown', () => this.scene.start(restartScene));
-      });
+      let ready = false;
+      const restart = () => ready && this.scene.start(restartScene);
+      this.time.delayedCall(400, () => (ready = true));
+      this.input.on('pointerdown', restart);
+      bindKeys(this, { action: restart });
     }
   };
 }

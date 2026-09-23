@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Board, COLS, MOVES, ROWS } from '../logic.js';
 import { POTIONS, SPECIAL_ART, artPath } from '../art.js';
 import { openHelp } from '../help.js';
+import { bindKeys } from '../../../../shared/keyboard.js';
 
 const CELL = 87;
 const BOARD_SIZE = COLS * CELL;
@@ -40,10 +41,14 @@ export class GameScene extends Phaser.Scene {
 
     this.selection = this.add.rectangle(0, 0, CELL - 6, CELL - 6).setStrokeStyle(4, 0xffffff).setVisible(false);
     this.selection.setDepth(1);
+    // Keyboard cursor: a gold frame, shown once a key is pressed.
+    this.cursor = null;
+    this.cursorFrame = this.add.rectangle(0, 0, CELL - 14, CELL - 14).setStrokeStyle(4, 0xffd23f).setVisible(false).setDepth(1);
 
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) this.createView(this.board.cells[r][c], r, c);
 
     this.setUpInput();
+    this.setUpKeys();
     this.restartHintTimer();
   }
 
@@ -162,6 +167,47 @@ export class GameScene extends Phaser.Scene {
         this.select(cell);
       }
     });
+  }
+
+  // WASD moves the cursor; Space picks up the potion under it. With a potion picked
+  // up, WASD swaps it that way instead.
+  setUpKeys() {
+    const step = (dr, dc) => () => {
+      const inside = ([r, c]) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
+      if (this.selected) {
+        const from = this.selected;
+        const to = [from[0] + dr, from[1] + dc];
+        this.select(null);
+        if (!inside(to)) return;
+        this.moveCursor(to);
+        this.trySwap(from, to);
+        return;
+      }
+      if (!this.cursor) return this.moveCursor([3, 3]);
+      const to = [this.cursor[0] + dr, this.cursor[1] + dc];
+      if (inside(to)) this.moveCursor(to);
+    };
+    bindKeys(
+      this,
+      {
+        up: step(-1, 0),
+        down: step(1, 0),
+        left: step(0, -1),
+        right: step(0, 1),
+        action: () => {
+          if (!this.cursor) return this.moveCursor([3, 3]);
+          const same = this.selected && this.selected[0] === this.cursor[0] && this.selected[1] === this.cursor[1];
+          this.select(same ? null : this.cursor);
+        },
+      },
+      () => !this.input.enabled, // help dialog open
+    );
+  }
+
+  moveCursor(cell) {
+    this.cursor = cell;
+    const { x, y } = this.cellCenter(...cell);
+    this.cursorFrame.setPosition(x, y).setVisible(true);
   }
 
   select(cell) {

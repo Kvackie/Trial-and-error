@@ -36,6 +36,7 @@ Games import these with `../../../shared/<file>` from their `src/` folder:
 | `shared/screen.js` | `scaleConfig()`: a portrait canvas 720 units wide whose height follows the screen's shape, so the playfield can use the whole phone screen. |
 | `shared/help-dialog.js` | `openHelpDialog()`: the scrollable "How to play" window opened by each game's **?** button. |
 | `shared/game-over-scene.js` | `createGameOverScene('<game>:best')`: score, best score and tap to play again. |
+| `shared/keyboard.js` | `bindKeys()`: the keyboard controls every game shares: W A S D to move or steer, Space to confirm or trigger the special action. |
 | `shared/android-back.js` | `handleAndroidBack()`: in the APKs, Android's Back button goes back a page (a game back to the hub in the all-games app) or closes the app. Every game calls it in `main.js`. |
 
 When a second game needs something that already exists in one game, move it into `shared/` instead of copying it.

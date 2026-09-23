@@ -7,6 +7,7 @@ export const HELP_HTML = `
       corners, or what's on a square until you step onto it.</li>
     <li>Squares you've walked through stay on your map, faded.</li>
     <li>Move by swiping on the maze, or with the arrow buttons. Hold a button to keep walking.</li>
+    <li>On a computer: <b>W A S D</b> walk. At a chest, <b>W A S D</b> pick an answer and <b>Space</b> confirms it.</li>
   </ul>
   <h3>Dead ends</h3>
   <ul>
