@@ -3,6 +3,7 @@ import { Board, COLS, MOVES, ROWS } from '../logic.js';
 import { POTIONS, SPECIAL_ART, artPath } from '../art.js';
 import { openHelp } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
+import { addHomeButton } from '../../../../shared/home-button.js';
 
 const CELL = 87;
 const BOARD_SIZE = COLS * CELL;
@@ -57,12 +58,14 @@ export class GameScene extends Phaser.Scene {
   drawHud() {
     const y = this.hudY;
     const text = { fontFamily: 'sans-serif', color: '#ffffff' };
-    this.add.text(BOARD_X + 4, y, 'SCORE', { ...text, fontSize: '26px', color: '#e8dcff' });
-    this.scoreText = this.add.text(BOARD_X + 4, y + 32, '0', { ...text, fontSize: '68px', fontStyle: 'bold', color: '#ffd23f' });
+    this.add.text(BOARD_X + 84, y, 'SCORE', { ...text, fontSize: '26px', color: '#e8dcff' });
+    this.scoreText = this.add.text(BOARD_X + 84, y + 32, '0', { ...text, fontSize: '68px', fontStyle: 'bold', color: '#ffd23f' });
     this.add.text(720 - BOARD_X - 4, y, 'MOVES', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0);
     this.movesText = this.add
       .text(720 - BOARD_X - 4, y + 32, String(this.movesLeft), { ...text, fontSize: '68px', fontStyle: 'bold' })
       .setOrigin(1, 0);
+
+    addHomeButton(this, BOARD_X + 34, y + 62, { radius: 34, fill: 0x43207a, stroke: 0xc77dff });
 
     // Help button: opens the rules in a dialog so they stay off the playfield.
     const help = this.add.circle(360, y + 62, 34, 0x43207a).setStrokeStyle(3, 0xc77dff).setInteractive({ useHandCursor: true });

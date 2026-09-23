@@ -27,6 +27,9 @@ how games here must be built. Read both before starting.
   space left over, and centre the score/board/buttons block vertically.
 - Keep on-screen information to a minimum: score and the one or two numbers the player
   needs while playing. No rules, legends, instructions or long labels on the playfield.
+- Every game has a round **Home** button at the **top left** of the header, made with
+  `addHomeButton()` from `shared/home-button.js` (back to the hub, or closes a
+  single-game APK).
 - Rules, controls, special pieces and scoring go in a **"How to play" dialog** behind a
   round **?** button in the header, built with `openHelpDialog()` from
   `shared/help-dialog.js`. Pause the game while it is open.

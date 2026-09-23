@@ -46,7 +46,7 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
     .join('\n');
 
   const hubApp = !app && repo && readJson(path.join(siteDir, 'app.json')).apk;
-  const intro = app ? 'Pick a game. Press Back to return here.' : 'Small games you can play right in your browser.';
+  const intro = app ? 'Pick a game. Tap the home button or press Back to return here.' : 'Small games you can play right in your browser.';
 
   return `<!doctype html>
 <html lang="en">

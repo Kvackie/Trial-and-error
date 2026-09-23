@@ -5,6 +5,7 @@ import { MAX_LIVES, isCheckpoint, loadProgress, resetProgress, saveProgress } fr
 import { openConfirmDialog, openHelpDialog } from '../../../../shared/help-dialog.js';
 import { HELP_HTML } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
+import { addHomeButton } from '../../../../shared/home-button.js';
 
 // Black and white, gold accents, warm orange lantern light.
 const INK = 0x000000;
@@ -300,12 +301,14 @@ export class GameScene extends Phaser.Scene {
       this.ui(this.add.text(width / 2 + (i - 1) * 44, 108, '♥', { fontFamily: SERIF, fontSize: '36px' }).setOrigin(0.5)),
     );
     this.bestText = this.ui(
-      this.add.text(24, 108, '', { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(0, 0.5),
+      this.add.text(24, 118, '', { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(0, 0.5),
     );
 
-    // Reset: small and tucked in the corner, and it always asks first.
+    addHomeButton(this, 56, 60, { fill: INK, stroke: GOLD, icon: GOLD, onBeforeLeave: () => !this.modal }).forEach((o) => this.ui(o));
+
+    // Reset: small and tucked under the help button, and it always asks first.
     const reset = this.ui(
-      this.add.text(24, 36, 'Reset', { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(0, 0.5),
+      this.add.text(width - 24, 118, 'Reset', { fontFamily: SERIF, fontSize: '24px', color: MUTED_CSS }).setOrigin(1, 0.5),
     );
     reset.setInteractive({ hitArea: new Phaser.Geom.Rectangle(-12, -18, reset.width + 24, reset.height + 36), hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true });
     reset.on('pointerup', () => this.confirmReset());

@@ -19,5 +19,5 @@ export const HELP_HTML = `
   <ul>
     <li>Levels ${CHECKPOINT_EVERY}, ${CHECKPOINT_EVERY * 2}, ${CHECKPOINT_EVERY * 3} and so on are checkpoints,
       marked by a campfire. Reaching one saves your progress and refills your lives.</li>
-    <li><b>Reset</b> (top left) clears every checkpoint and starts again from level 1.</li>
+    <li><b>Reset</b> (top right, under ?) clears every checkpoint and starts again from level 1.</li>
   </ul>`;

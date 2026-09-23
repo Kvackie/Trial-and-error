@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BlockDropGame, COLS, PIECES, ROWS } from '../logic.js';
 import { openHelp } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
+import { addHomeButton } from '../../../../shared/home-button.js';
 
 const { Color } = Phaser.Display;
 const PALETTE = Object.values(PIECES).map((piece) => piece.color);
@@ -26,8 +27,8 @@ export class GameScene extends Phaser.Scene {
     this.gfx = this.add.graphics();
 
     const label = { fontFamily: 'sans-serif', color: '#ffffff' };
-    this.scoreText = this.add.text(MARGIN, this.top + 8, '', { ...label, fontSize: '52px', fontStyle: 'bold', color: '#ffd23f' });
-    this.statsText = this.add.text(MARGIN, this.top + 78, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
+    this.scoreText = this.add.text(MARGIN + 84, this.top + 8, '', { ...label, fontSize: '52px', fontStyle: 'bold', color: '#ffd23f' });
+    this.statsText = this.add.text(MARGIN + 84, this.top + 78, '', { ...label, fontSize: '30px', color: '#e0e2ff' });
     this.add.text(720 - MARGIN - 86, this.top + 2, 'NEXT', { ...label, fontSize: '24px', fontStyle: 'bold', color: '#e0e2ff' }).setOrigin(0.5, 0);
 
     this.setUpButtons();
@@ -60,6 +61,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   setUpHelpButton() {
+    addHomeButton(this, MARGIN + 32, this.top + 50);
+
     const x = 720 - MARGIN - 172 - 56;
     const y = this.top + 92;
     const button = this.add.circle(x, y, 32, 0x2b2d5c).setStrokeStyle(3, 0xe0e2ff).setInteractive({ useHandCursor: true });
