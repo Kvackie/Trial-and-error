@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#10132a" />
     <title>Trial and Error</title>
     <style>
-      :root { color-scheme: dark; --bg: #10132a; --card: #1c2046; --text: #f4f4fb; --muted: #a3a6c8; --accent: #ffd166; }
+      :root { color-scheme: dark; --bg: #10132a; --card: #1c2046; --frame: #5a5e8f; --text: #f4f4fb; --muted: #a3a6c8; --accent: #ffd166; }
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
       main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
@@ -14,7 +14,17 @@
       .intro { margin: 0 0 24px; color: var(--muted); }
       ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
       .card { background: var(--card); border-radius: 14px; padding: 16px; }
-      .play { color: inherit; text-decoration: none; display: block; }
+      /* The framed title and description are the link that opens the game. */
+      .play {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--frame);
+        border-radius: 10px;
+        transition: border-color 0.15s;
+      }
+      .play:hover, .play:focus-visible { border-color: var(--accent); outline: none; }
       .play h2 { margin: 0 0 6px; font-size: 1.25rem; color: var(--accent); }
       .play p { margin: 0; line-height: 1.4; }
       .meta { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
@@ -25,14 +35,14 @@
   <body>
     <main>
       <h1>Trial and Error</h1>
-      <p class="intro">Small games. Tap one to play in your browser.</p>
+      <p class="intro">Small games you can play right in your browser.</p>
       <ul>
       <li class="card">
-        <a class="play" href="./star-catcher/">
-          <h2>Star Catcher</h2>
-          <p>Tap the falling stars before they hit the ground. Miss three and it&#39;s game over.</p>
+        <a class="play" href="./block-drop/">
+          <h2>Block Drop</h2>
+          <p>Stack falling blocks and clear full rows. Move, rotate and drop with the buttons.</p>
         </a>
-        <p class="meta">Updated 2026-09-22</p><a class="apk" href="https://github.com/Kvackie/Trial-and-error/releases/download/star-catcher-latest/star-catcher.apk">Android APK</a>
+        <p class="meta">Updated 2026-09-23</p>
       </li>
       </ul>
     </main>
