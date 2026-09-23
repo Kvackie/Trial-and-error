@@ -1,10 +1,10 @@
 name: Build and deploy
 
-# Started manually from the Actions tab. Builds only the selected game.
-# On the default branch it also:
-#   - publishes the game to its own folder on the gh-pages branch (other games
-#     are left untouched) and regenerates the hub page listing all games
-#   - publishes the APK to the game's "<game>-latest" release
+# Started manually from the Actions tab. Builds the selected game, or every game
+# with "all". On the default branch it also:
+#   - publishes each built game to its own folder on the gh-pages branch (games
+#     that weren't built are left untouched) and regenerates the hub page
+#   - publishes each APK (if requested) to the game's "<game>-latest" release
 run-name: Build ${{ inputs.game }}
 
 on:
@@ -14,8 +14,9 @@ on:
         description: Game to build
         required: true
         type: choice
-        # Kept up to date by `npm run new-game`.
         options:
+          - all
+          # Kept up to date by `npm run new-game`.
           # games:start
           - block-drop
           - lantern-maze
@@ -24,18 +25,19 @@ on:
       apk:
         description: Also build the Android APK
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
 
 env:
-  GAME: ${{ inputs.game }}
   IS_DEFAULT_BRANCH: ${{ github.ref_name == github.event.repository.default_branch }}
 
 jobs:
   web:
     runs-on: ubuntu-latest
+    outputs:
+      games: ${{ steps.games.outputs.list }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,11 +45,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build -- "$GAME"
+
+      - name: Work out which games to build
+        id: games
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          if [ "$GAME" = all ]; then
+            list=$(ls games/*/game.json | cut -d/ -f2 | jq -Rnc '[inputs]')
+          else
+            list=$(jq -nc --arg game "$GAME" '[$game]')
+          fi
+          echo "Building: $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          GAMES: ${{ steps.games.outputs.list }}
+        run: |
+          for game in $(jq -r '.[]' <<<"$GAMES"); do
+            npm run build -- "$game"
+          done
+
       - uses: actions/upload-artifact@v4
         with:
-          name: web-${{ inputs.game }}
-          path: dist/${{ inputs.game }}
+          name: web
+          path: dist
 
   android:
     if: inputs.apk
@@ -55,7 +78,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # One APK per game, built side by side; one failing doesn't stop the others.
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.web.outputs.games) }}
     env:
+      GAME: ${{ matrix.game }}
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
@@ -72,8 +101,8 @@ jobs:
       - run: npm ci
       - uses: actions/download-artifact@v4
         with:
-          name: web-${{ inputs.game }}
-          path: dist/${{ inputs.game }}
+          name: web
+          path: dist
       - run: npm run android -- "$GAME"
 
       - name: Decode signing keystore
@@ -97,8 +126,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.game }}-apk
-          path: ${{ inputs.game }}.apk
+          name: ${{ matrix.game }}-apk
+          path: ${{ matrix.game }}.apk
 
       - name: Publish to "<game>-latest" release
         if: env.IS_DEFAULT_BRANCH == 'true'
@@ -114,14 +143,14 @@ jobs:
 
   deploy:
     needs: [web, android]
-    # Runs when the APK succeeded or wasn't requested, so the hub never links a missing APK.
+    # Runs when every APK succeeded or none were requested, so the hub never links a missing APK.
     if: >-
       !cancelled() && github.ref_name == github.event.repository.default_branch &&
       needs.web.result == 'success' && needs.android.result != 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    # Deploys of different games queue up instead of racing on the gh-pages branch.
+    # Deploys queue up instead of racing on the gh-pages branch.
     concurrency:
       group: gh-pages
       cancel-in-progress: false
@@ -142,20 +171,23 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: web-${{ inputs.game }}
+          name: web
           path: build
 
-      - name: Replace this game's folder
+      - name: Replace the built games' folders
         env:
+          GAMES: ${{ needs.web.outputs.games }}
           APK_BUILT: ${{ needs.android.result == 'success' }}
         run: |
-          previous_apk=$(jq -r '.apk // false' "site/$GAME/build.json" 2>/dev/null || echo false)
-          rm -rf "site/$GAME"
-          cp -r build "site/$GAME"
-          apk=false
-          if [ "$APK_BUILT" = true ] || [ "$previous_apk" = true ]; then apk=true; fi
-          jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" \
-            '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$GAME/build.json"
+          for game in $(jq -r '.[]' <<<"$GAMES"); do
+            previous_apk=$(jq -r '.apk // false' "site/$game/build.json" 2>/dev/null || echo false)
+            rm -rf "site/$game"
+            cp -r "build/$game" "site/$game"
+            apk=false
+            if [ "$APK_BUILT" = true ] || [ "$previous_apk" = true ]; then apk=true; fi
+            jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" \
+              '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$game/build.json"
+          done
           touch site/.nojekyll
 
       - name: Regenerate hub page
@@ -163,9 +195,11 @@ jobs:
 
       - name: Push gh-pages
         working-directory: site
+        env:
+          GAMES: ${{ needs.web.outputs.games }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Deploy $GAME (${GITHUB_SHA::7})"
+          git commit -m "Deploy $(jq -r 'join(", ")' <<<"$GAMES") (${GITHUB_SHA::7})"
           git push origin gh-pages

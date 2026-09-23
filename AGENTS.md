@@ -58,8 +58,9 @@ how games here must be built. Read both before starting.
 
 ## Building and publishing
 
-- The workflow only runs when started by hand, and builds one game at a time. Don't
-  add automatic triggers.
+- The workflow only runs when started by hand, and builds the game picked in its
+  dropdown, or every game with `all`. APKs are opt-in per run. Don't add automatic
+  triggers.
 - There is one pipeline for everything: no separate CI and production setups.
 
 ## Commits

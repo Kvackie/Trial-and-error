@@ -58,17 +58,17 @@ This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-
 
 ## Build and deploy
 
-`.github/workflows/build.yml` only runs when you start it: **Actions → Build and deploy → Run workflow**. Pick the branch, the game from the dropdown, and whether to build the APK.
+`.github/workflows/build.yml` only runs when you start it: **Actions → Build and deploy → Run workflow**. Pick the branch, a game from the dropdown (or **all** to build every game), and whether to build APKs (off by default).
 
-Only the selected game is built. There is no separate CI and production setup:
+Only the selected games are built. There is no separate CI and production setup:
 
 | Job | Every run | Default branch only |
 |---|---|---|
-| `web` | builds the game (workflow artifact) | |
-| `android` | builds `<game>.apk` (workflow artifact) | publishes it to the `<game>-latest` release |
-| `deploy` | | replaces only `<game>/` on the `gh-pages` branch and regenerates the hub page |
+| `web` | builds each selected game (one `web` workflow artifact) | |
+| `android` | only if APKs were requested: builds `<game>.apk` for each game, side by side (workflow artifacts) | publishes each to the game's `<game>-latest` release |
+| `deploy` | | replaces only the built games' folders on the `gh-pages` branch and regenerates the hub page, in one push |
 
-Other games already on `gh-pages` are never touched. The APK's `versionCode` is the workflow run number, so each new build installs over the previous one.
+Games that weren't built are never touched on `gh-pages`. The APK's `versionCode` is the workflow run number, so each new build installs over the previous one. `all` is a reserved name, so no game can be called that.
 
 ### One-time repository setup
 

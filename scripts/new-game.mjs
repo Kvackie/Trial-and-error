@@ -9,6 +9,8 @@ if (!id || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
   fail('Usage: npm run new-game -- <game> ["Display Name"]  (game: lowercase letters, digits and dashes)');
 }
 
+if (id === 'all') fail('"all" is reserved: it builds every game in the workflow.');
+
 const target = path.join(GAMES_DIR, id);
 if (fs.existsSync(target)) fail(`games/${id} already exists.`);
 
