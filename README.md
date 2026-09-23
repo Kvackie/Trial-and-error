@@ -9,11 +9,22 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 
 ## Games
 
-| Game | Folder | What it is |
+| Game (Swedish name) | Folder | What it is |
 |---|---|---|
-| Block Drop | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
-| Potion Match | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
-| Lantern Maze | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
+| Block Drop (Blockfall) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
+| Potion Match (Trolldrycker) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
+| Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
+
+Every game has the same frame around it:
+
+- **Header buttons:** Home (top left: back to the hub, or closes a single-game APK), a trophy for the
+  global leaderboard, a gear for Settings and **?** for How to play. Dialogs pause the game.
+- **Settings:** English or Swedish (🇬🇧 / 🇸🇪 flags), sound on/off and volume. The choices are stored
+  once per device and shared by every game and the hub; the language switches live, mid-game.
+- **Controls:** touch first (taps, swipes, on-screen buttons), plus the same keys everywhere:
+  **W A S D** to move or steer, **Space** to confirm or trigger the special action.
+- **Sound effects,** generated in code (no audio files).
+- **An icon,** shown on the hub and as the browser tab icon.
 
 ## Layout
 
@@ -24,6 +35,8 @@ leaderboard/       global leaderboard service (Cloudflare Worker + D1 database)
 shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
+.github/workflows/ build.yml (build and publish games) and leaderboard.yml (deploy the leaderboard)
+dist/, dist-app/   build output (not committed)
 ```
 
 `game.json` holds the game's display name and a one-line description for the hub page (English, plus a Swedish `sv` block), its hub icon (a file in the game's `public/` folder, also used as the browser tab icon), and its Android app ID (which must be unique per game).
@@ -63,11 +76,19 @@ npm run hub                      # writes dist/index.html listing the games buil
 npm run new-game -- my-game "My Game"
 ```
 
-This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-game` to the workflow's dropdown. The template already uses the shared screen sizing. Commit and push, and it can be selected in the workflow.
+This copies `template/` to `games/my-game/`, fills in `game.json`, and adds `my-game` to the workflow's dropdown. Commit and push, and it can be selected in the workflow.
+
+The template is a bare starting point: it already uses the shared screen sizing and Android Back handling, but a finished game also needs (see [AGENTS.md](AGENTS.md) for the rules, and the existing games for examples):
+
+- the header buttons: `addHomeButton()`, `addSettingsButton()`, a **?** button with `openHelpDialog()`, and `addTrophyButton()` if it has a score;
+- `src/strings.js` with English and Swedish text, a help dialog in both languages, and the `sv` block in `game.json`;
+- keyboard controls with `bindKeys()` and sounds with `playSound()`;
+- its own `public/icon.svg` (or `.png`, named in `game.json`);
+- `createGameOverScene('<game>:best', 'Game', { leaderboard: { game } })` if it ends with a score, and an entry in `leaderboard/src/rules.js`.
 
 ## Build and deploy
 
-`.github/workflows/build.yml` only runs when you start it: **Actions → Build and deploy → Run workflow**. Pick the branch, a game from the dropdown (or **all** to build every game), and whether to build APKs (off by default).
+`.github/workflows/build.yml` only runs when you start it: **Actions → Build and deploy → Run workflow**. Pick the branch, a game from the dropdown (or **all** to build every game), and two checkboxes, both off by default: **Also build the Android APK** (one app per selected game) and **Also build the all-games hub app** (one app with every game). If the Cloudflare secrets are set, the build also bakes in the leaderboard's address (see [Leaderboard](#leaderboard)).
 
 Only the selected games are built. There is no separate CI and production setup:
 
@@ -91,6 +112,29 @@ npm run android -- block-drop    # one game as its own app
 npm run android:hub              # or: every game in one app (built into dist-app/)
 cd android && ./gradlew assembleRelease
 ```
+
+## Languages
+
+All text exists in English and Swedish.
+
+- **Shared text** (Game Over, dialogs, settings, leaderboard) lives in `shared/i18n.js`.
+- **A game's own text** lives in its `src/strings.js`, made with `makeT({ en: {...}, sv: {...} })`. Use
+  `{name}` placeholders for values, e.g. `tr('stats', { level, lines })`.
+- **Text on the canvas** is created with `bindText(scene, text, () => tr('key'))`, or refreshed in an
+  `onSceneLangChange(scene, fn)` handler, so it follows a language change mid-game.
+- **Help dialogs** keep an English and a Swedish version side by side in the game's `help.js`.
+- **The hub** takes names and descriptions from `game.json` (`name`, `description` and the `sv` block).
+- **Adding a language** means adding it to `LANGUAGES` and the shared strings in `shared/i18n.js`, a
+  flag in `shared/flags.js`, and a block in every `strings.js`, help dialog and `game.json`.
+
+## Sound
+
+`shared/sound.js` synthesises every effect with Web Audio when it plays, so there are no audio files to
+license or download. Games call `playSound('name')`; the available names are listed in `SOUNDS` in that
+file (general: `click`, `gameOver`; pieces: `move`, `rotate`, `drop`, `clear`; matching: `select`,
+`swap`, `invalid`, `match`, `special`, `blast`, `shuffle`; exploring: `step`, `bump`, `chest`, `correct`,
+`wrong`, `levelUp`, `checkpoint`). Add new sounds there rather than in a game. Volume and mute come from
+Settings and apply to every game.
 
 ## Leaderboard
 

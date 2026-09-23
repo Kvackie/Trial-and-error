@@ -41,8 +41,9 @@ how games here must be built. Read both before starting.
 
 ## Share code and assets
 
-- **Reuse before you write.** Check `shared/` first: screen sizing, the help dialog and
-  the Game Over screen already live there.
+- **Reuse before you write.** Check `shared/` first (the README has a table of what's
+  there): screen sizing, header buttons, dialogs, settings, languages, sound, keyboard,
+  the Game Over screen and the leaderboard already live there.
 - **Don't copy between games.** When a second game needs something that exists in one
   game, move it into `shared/`, make it configurable, and switch both games to it.
 - Shared modules must stay game-agnostic: take options (colours, keys, text) rather than
@@ -56,11 +57,14 @@ how games here must be built. Read both before starting.
 
 ## Each game
 
-- Lives in `games/<game>/` with a `game.json` (name, one-line description, unique
-  Android `appId`). Create new games with `npm run new-game -- <game> "Name"`, which also
-  adds the game to the workflow dropdown.
+- Lives in `games/<game>/` with a `game.json` (name, one-line description, `sv` block,
+  icon, unique Android `appId`). Create new games with `npm run new-game -- <game> "Name"`,
+  which also adds the game to the workflow dropdown. The template is deliberately bare:
+  add everything below before calling a game done (the README's "Add a game" has a
+  checklist).
 - Namespace anything stored in the browser by game, e.g. the best score key `<game>:best`.
   All games share one origin inside the all-games hub app, so un-namespaced keys would clash.
+  The `settings:` and `leaderboard:` prefixes are reserved for the shared modules.
 - Call `handleAndroidBack()` from `shared/android-back.js` in `main.js`, so Back works
   in the APKs (the template already does).
 - Link and load files by relative path (`./…`, as Vite's `base: './'` does). Games run
@@ -79,7 +83,8 @@ how games here must be built. Read both before starting.
 - Every game has an icon in `public/` (named in `game.json`), shown on the hub and as the
   browser tab icon.
 - Keep game rules separate from Phaser drawing code where the rules are non-trivial, so
-  they can be tested on their own in Node (see `games/*/src/logic.js`).
+  they can be tested on their own in Node (e.g. `block-drop/src/logic.js`,
+  `lantern-maze/src/maze.js` and `puzzles.js`).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules
   change.
 
