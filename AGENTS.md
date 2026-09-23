@@ -117,6 +117,18 @@ page in this repo. These rules still apply:
   the game folder), or use models, textures and sounds whose licence allows public use
   without permission (CC0 / public domain). Record where every downloaded file came from
   and its licence in the game's `CREDITS.md`, and name them in the commit message.
+- Checked CC0 model sources (glTF/GLB, clone them with git; their licence files say
+  CC0). Look here first:
+  - KayKit by Kay Lousberg, <https://github.com/KayKit-Game-Assets>:
+    `KayKit-Character-Pack-Adventures-1.0` (Knight, Barbarian, Mage, Rogue and Hooded
+    Rogue, rigged with 76 animations each, plus weapons), `KayKit-Dungeon-Remastered-1.0`,
+    `KayKit-Medieval-Hexagon-Pack-1.0`, `KayKit-City-Builder-Bits-1.0`,
+    `KayKit-Space-Base-Bits-1.0`, `KayKit-Restaurant-Bits-1.0`, `KayKit-Prototype-Bits-1.0`.
+    Models are under `addons/<pack>/Assets/gltf/` (characters in `Characters/gltf/`).
+  - Kenney starter kits, <https://github.com/KenneyNL>: `Starter-Kit-3D-Platformer`,
+    `Starter-Kit-Racing`, `Starter-Kit-City-Builder`, `Starter-Kit-FPS`,
+    `Starter-Kit-Basic-Scene` (code MIT, models and sounds CC0 as their READMEs say).
+  Copy only the files a game uses into its `public/` folder.
 
 ## Building and publishing
 
