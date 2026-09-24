@@ -24,6 +24,7 @@ on:
           - hex-hold
           - lantern-maze
           - potion-match
+          - throne-of-souls
           # games:end
       apk:
         description: Also build the Android APK

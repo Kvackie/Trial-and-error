@@ -1,0 +1,10 @@
+{
+  "name": "Throne of Souls",
+  "description": "A semi-idle dungeon defence: guard the demon lord's throne with monsters, a wall, traps and runes.",
+  "appId": "io.github.kvackie.trialanderror.throneofsouls",
+  "icon": "icon.svg",
+  "sv": {
+    "name": "Själarnas tron",
+    "description": "Ett halvt idle-försvar i en fängelsehåla: skydda demonfurstens tron med monster, en mur, fällor och runor."
+  }
+}

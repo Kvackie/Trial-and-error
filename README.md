@@ -15,6 +15,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Potion Match (Trolldrycker) | [Play](https://kvackie.github.io/Trial-and-error/potion-match/) | `games/potion-match/` | Match-three on a 6×6 board with potion art from Eternal Alchemy. Two modes: Classic (every swap costs a move; specials and long chains earn moves back) and Zen (only misses cost a move), each with its own leaderboard. |
 | Lantern Maze (Lyktlabyrinten) | [Play](https://kvackie.github.io/Trial-and-error/lantern-maze/) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
 | Hex Hold (Hexfästet) | [Play](https://kvackie.github.io/Trial-and-error/hex-hold/) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
+| Throne of Souls (Själarnas tron) | [Play](https://kvackie.github.io/Trial-and-error/throne-of-souls/) | `games/throne-of-souls/` | Semi-idle dungeon defence in pixel art: heroes storm in from the right and your demon lord must hold. Recruit and deploy monsters, build a wall with structures on, behind and in front of it, merge runes and spend talent points. Endless waves that repeat until you move on, a boss every 10th, and up to 8 hours of progress while closed. |
 
 The hub also links to the owner's games in other repos:
 [Eternal Alchemy](https://kvackie.github.io/eternal-alchemy/) and
@@ -124,6 +125,14 @@ the page is hidden. The rules for 3D games are in [AGENTS.md](AGENTS.md#3d-games
 
 A 3D game may still use the shared modules that don't need Phaser: Hex Hold uses the dialogs, settings,
 languages and sounds, and draws its own HTML header and panels over the 3D view.
+
+### Throne of Souls' tools
+
+- **Balance:** `node games/throne-of-souls/tools/balance.mjs [minutes] [seed]` plays the game at high speed
+  with a scripted player and reports the wave, lord level, wall and army every 10 minutes. Re-run it after
+  changing numbers in `src/data.js`.
+- **Art:** the 0x72 sheet's frames are listed in `public/art/0x72.txt`; the DawnLike sprites used and the
+  pieces drawn in code are in `src/art.js`. Sources and licences are in `games/throne-of-souls/CREDITS.md`.
 
 ### Hex Hold's tools
 
