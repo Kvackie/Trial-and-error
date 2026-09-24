@@ -5,7 +5,7 @@ All 3D models are CC0 (public domain) from Kay Lousberg's KayKit packs
 
 | Pack | Source | Used for |
 |---|---|---|
-| KayKit Medieval Hexagon Pack 1.0 | <https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0> | Hex tiles, trees, hills, mountains, rocks, all buildings, flags |
+| KayKit Medieval Hexagon Pack 1.0 | <https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0> | Hex tiles, trees, hills, mountains, rocks, clouds, every building (including the blacksmith, tavern and catapult tower), walls, gates, bridges, flags and the villagers' sacks and lumber |
 | KayKit Dungeon Remastered 1.0 | <https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0> | Dungeon doorways, torches, banners, barrels |
 | KayKit Character Pack: Adventures 1.0 | <https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0> | Knight, Barbarian, Rogue, Hooded Rogue and Mage, with their animations |
 

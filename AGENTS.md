@@ -94,7 +94,11 @@ how games here must be built. Read both before starting.
   `lantern-maze/src/maze.js` and `puzzles.js`), with tests in the game's `test/` folder
   (`npm test` runs them all).
 - Keep the hub description in `game.json` and the help dialog up to date when the rules
-  change.
+  change. Games with an economy or waves keep a scripted check of their numbers (like
+  `hex-hold/tools/balance.mjs`); re-run it after changing them.
+- Saved games must keep working after an update: when a change would alter what an old
+  save loads into (a generated map, say), version it and keep the old behaviour for old
+  saves.
 
 ## 3D games
 
@@ -111,6 +115,8 @@ page in this repo. These rules still apply:
 - A Home button at the top left (the template's calls `goHome()`), `game.json` with a
   unique `appId`, an icon in `public/`, relative paths, storage keys namespaced by game,
   and `handleAndroidBack()` in `main.js`.
+- 3D games may still use the shared modules that don't need Phaser (dialogs, settings,
+  languages, sound, home button, Android Back); prefer them over new copies.
 - Keep it light for phones: pixel ratio capped at 2, few lights and at most one
   shadow-casting light, shared geometries and materials, and stop drawing while the
   page is hidden. Aim for a steady frame rate on a mid-range Android phone.

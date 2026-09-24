@@ -1,6 +1,6 @@
 # Trial and Error
 
-A collection of small mobile games built with [Phaser](https://phaser.io/). Each game lives in its own folder and is built and published on its own. Every game can be played in the browser (GitHub Pages) and installed as an Android app (wrapped with [Capacitor](https://capacitorjs.com/)).
+A collection of small mobile games built with [Phaser](https://phaser.io/) (2D) and [Three.js](https://threejs.org/) (3D). Each game lives in its own folder and is built and published on its own. Every game can be played in the browser (GitHub Pages) and installed as an Android app (wrapped with [Capacitor](https://capacitorjs.com/)).
 
 - Hub page: `https://kvackie.github.io/Trial-and-error/`
 - One game: `https://kvackie.github.io/Trial-and-error/<game>/`
@@ -18,7 +18,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Potion Market (Trolldrycksmarknaden) | `games/potion-market/` | Brew potions by balancing five essences (art and recipes from Eternal Alchemy) and sell them on a market shared by every player. |
 | Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town and hold out against night-time monster waves and titans. Real time; the town keeps producing for up to 8 hours while closed. |
 
-Every game has the same frame around it:
+Every 2D game has the same frame around it (3D games choose their own, see [Add a 3D game](#add-a-3d-game)):
 
 - **Header buttons:** Home (top left: back to the hub, or closes a single-game APK), a trophy for the
   global leaderboard, a gear for Settings and **?** for How to play. Dialogs pause the game.
@@ -32,7 +32,7 @@ Every game has the same frame around it:
 ## Layout
 
 ```
-games/<game>/      one folder per game: index.html, src/, public/, game.json
+games/<game>/      one folder per game: index.html, src/, public/, game.json (and test/, tools/ where needed)
 template/          starting point copied by `npm run new-game` (Phaser, 2D)
 template-3d/       starting point copied by `npm run new-game -- <game> "Name" --3d` (Three.js)
 leaderboard/       online service: leaderboard, shared pond and market (Cloudflare Worker + D1 database)
@@ -74,7 +74,12 @@ npm install
 npm run dev -- block-drop        # http://localhost:5173, also reachable from your phone on the same network
 npm run build -- block-drop      # builds into dist/block-drop/
 npm run hub                      # writes dist/index.html listing the games built into dist/
+npm test                         # the game-rules tests in games/*/test/
 ```
+
+The hub page (`scripts/build-hub.mjs`) lists every game built into the site, then a **More games** section
+linking to the owner's other published games (Eternal Alchemy and Dark Fantasy Settlement). Those links,
+their descriptions and icons are in `OTHER_GAMES` at the top of that script.
 
 ### Add a game
 
@@ -109,6 +114,23 @@ as APKs exactly like the other games (the workflow needs nothing extra), but the
 each one is its own page. `template-3d/` is a small working example (tap the crystal, W A S D turn the camera)
 with a full-screen renderer that follows the screen size, a Home button, models built in code and a pause while
 the page is hidden. The rules for 3D games are in [AGENTS.md](AGENTS.md#3d-games).
+
+A 3D game may still use the shared modules that don't need Phaser: Hex Hold uses the dialogs, settings,
+languages and sounds, and draws its own HTML header and panels over the 3D view.
+
+### Hex Hold's tools
+
+- **Models:** `games/hex-hold/tools/pack-models.mjs` packs the KayKit models listed in `src/models.js` into
+  a few files in `public/models/` (losslessly: shared textures and meshes, and only the animations the
+  game plays). Clone the three KayKit packs named in `games/hex-hold/CREDITS.md` into one folder, then
+  run `node games/hex-hold/tools/pack-models.mjs <that folder>`. Add a model name to `src/models.js`
+  and re-run it to use another model.
+- **Balance:** `node games/hex-hold/tools/balance.mjs [minutes] [islands] [balanced|economy|idle]`
+  plays the game at high speed with a scripted player and reports how resources grow, how each wave
+  goes and how dungeons turn out. Re-run it after changing numbers in `src/data.js`.
+- **Old saves:** islands are rebuilt from their seed when loaded, so a change to the island generator
+  must keep old islands the same: bump `WORLD_VERSION` in `src/world.js` and keep the old path for
+  saves made before it (rivers and islets came in version 2).
 
 ## Build and deploy
 
