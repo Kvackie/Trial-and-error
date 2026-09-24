@@ -14,6 +14,7 @@ import * as sim from './sim.js';
 import { THEME, openHelp } from './help.js';
 import { tr } from './strings.js';
 import { UI, clock } from './ui.js';
+import { endTutorial } from './tutorial.js';
 import { hero, loadAssets, model, thumbnails } from './view/assets.js';
 import { FOG_COLOUR, Terrain } from './view/terrain.js';
 import { Town } from './view/town.js';
@@ -153,6 +154,11 @@ const ui = new UI({
     if (sim.train(state, selectedBuilding(), unit)) playSound('coin');
     refresh();
   },
+  onEndTutorial() {
+    endTutorial(state);
+    playSound('click');
+    refresh();
+  },
   onGoals() {
     selection = { kind: 'goals' };
     playSound('click');
@@ -207,6 +213,7 @@ function refresh() {
   if (selection?.kind === 'units') selection.ids = selection.ids.filter((id) => state.units.some((u) => u.id === id && u.state !== 'away'));
   if (selection?.kind === 'units' && !selection.ids.length) selection = null;
   ui.updateTop(state);
+  ui.updateTutorial(state);
   ui.updatePanel(state, selection);
   const hex = selection?.kind === 'tile' ? [selection.q, selection.r] : selection?.kind === 'building' ? (() => {
     const b = state.buildings.find((x) => x.id === selection.id);
@@ -352,6 +359,9 @@ function react(events, now) {
       case 'hungry':
         playSound('wrong');
         ui.toast(tr('hungry'), 'warn');
+        break;
+      case 'tutorial':
+        playSound('correct');
         break;
       case 'goal':
         playSound('discover');

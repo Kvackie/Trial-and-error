@@ -41,6 +41,7 @@ import {
   waveMonsters,
   waveStrength,
 } from './data.js';
+import { advanceTutorial } from './tutorial.js';
 import { distance, findPath, fromWorld, key, neighbours, parse, spiral, toWorld } from './hex.js';
 import { RADIUS, WORLD_VERSION, generateWorld, isPassable, isWet, seeded } from './world.js';
 
@@ -66,6 +67,7 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
     research: { weapons: 0, armour: 0 },
     stats: { kills: 0, dungeonWins: 0, deepest: 0, titans: 0 },
     goals: [],
+    tutorial: { step: 0, done: false },
     nextId: 1,
   };
   addBuilding(state, 'castle', 0, 0, { ready: true });
@@ -330,6 +332,7 @@ export function moveUnits(state, ids, q, r) {
     if (!Number.isFinite(passCost(state)(...goal))) return;
     const path = findPath(fromWorld(u.x, u.z), goal, passCost(state));
     if (path) {
+      stat(state).moves = (stat(state).moves ?? 0) + 1;
       u.path = path;
       u.order = true;
       u.target = null;
@@ -722,6 +725,10 @@ export function tick(state, dt) {
   if (state.goalTimer <= 0) {
     state.goalTimer = 1;
     checkGoals(state, events);
+    for (const step of advanceTutorial(state)) {
+      addResources(state, step.reward);
+      events.push({ type: 'tutorial', step });
+    }
   }
   // Out of food: units go hungry and weaken (down to a third of their health).
   if (state.res.food <= 0) {

@@ -42,7 +42,17 @@
       #boss i { display: block; height: 100%; background: linear-gradient(90deg, #ff3b2e, #ff8a55); transition: width 0.2s; }
 
       /* Bottom panel. */
-      #panel { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto;
+      #bottom { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto;
+        display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+      #tutorial { display: flex; gap: 10px; align-items: center; background: rgba(40, 32, 12, 0.94); border: 2px solid #ffd98a; border-radius: 16px;
+        padding: 10px 12px; font-size: 15px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4); }
+      #tutorial[hidden] { display: none; }
+      #tutorial p { margin: 0; flex: 1; min-width: 0; }
+      #tutorial small { display: block; color: #ffd98a; font-weight: 700; }
+      .card.suggest { border: 2px solid #ffd98a; box-shadow: 0 0 12px rgba(255, 217, 138, 0.6); }
+      @media (prefers-reduced-motion: no-preference) { .card.suggest { animation: pulse 1.2s ease-in-out infinite; } }
+      @keyframes pulse { 50% { box-shadow: 0 0 2px rgba(255, 217, 138, 0.2); } }
+      #panel {
         background: rgba(14, 26, 38, 0.92); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 12px; box-sizing: border-box; }
       .head { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
       .head h2 { margin: 0; font-size: 18px; }
@@ -119,7 +129,10 @@
       <div id="boss" hidden><b></b><span><i></i></span></div>
     </div>
     <div id="toasts" aria-live="polite"></div>
-    <div id="panel"></div>
+    <div id="bottom">
+      <div id="tutorial" hidden></div>
+      <div id="panel"></div>
+    </div>
     <div id="loading">Hex Hold<div><i></i></div></div>
     <script type="module" src="/src/main.js"></script>
   </body>

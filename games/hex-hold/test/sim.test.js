@@ -218,3 +218,16 @@ test('new islands have rivers and islets; bridges make water walkable', async ()
   state.buildings.push({ id: 990, type: 'bridge', q: water.q, r: water.r, level: 1, hp: 200, state: 'ready', left: 0, queue: [] });
   assert.equal(canWalk(state, water.q, water.r), true);
 });
+
+test('the tutorial moves on as each step is done, and old saves skip it', async () => {
+  const { tutorialStep } = await import('../src/tutorial.js');
+  const state = newGame(31);
+  assert.equal(tutorialStep(state).id, 'farm');
+  const spot = [...state.tiles.values()].find((t) => !buildProblem(state, 'farm', t.q, t.r));
+  build(state, 'farm', spot.q, spot.r);
+  const events = run(state, 1.5);
+  assert.ok(events.some((e) => e.type === 'tutorial' && e.step.id === 'farm'));
+  assert.equal(tutorialStep(state).id, 'home');
+  const old = deserialise(serialise(state).replace('"tutorial":{"step":1,"done":false},', ''));
+  assert.equal(tutorialStep(old), null);
+});

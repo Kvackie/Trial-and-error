@@ -4,6 +4,7 @@ import { BUILDINGS, BUILD_ORDER, GOALS, TRADE_AMOUNT, tradeGet, RESEARCH, RESEAR
 import { parse } from './hex.js';
 import { buildProblem, canAfford, heroLevel, maxHp, partyChance, tradeProblem, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
 import { tr } from './strings.js';
+import { TUTORIAL, tutorialStep } from './tutorial.js';
 
 const ICONS = {
   wood: '<svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4" fill="#a8743f"/><circle cx="19" cy="12" r="4" fill="#e3b77a"/><circle cx="19" cy="12" r="1.6" fill="#a8743f"/></svg>',
@@ -31,6 +32,8 @@ export class UI {
     this.boss = document.querySelector('#boss');
     this.panel = document.querySelector('#panel');
     this.toasts = document.querySelector('#toasts');
+    this.tutorial = document.querySelector('#tutorial');
+    this.tutorial.addEventListener('click', (e) => this.click(e));
     this.thumbs = {};
     this.party = new Set();
     this.lastPanel = '';
@@ -64,6 +67,20 @@ export class UI {
   // --- Bottom panel -----------------------------------------------------------------
 
   // selection: null | { kind: 'tile', q, r } | { kind: 'building', id } | { kind: 'units', ids } | { kind: 'dungeon', key }
+  // The tutorial card above the bottom panel.
+  updateTutorial(state) {
+    const step = tutorialStep(state);
+    this.tutorial.hidden = !step;
+    if (!step) return;
+    const n = TUTORIAL.indexOf(step) + 1;
+    const html = `<p><small>${esc(tr('tutStep', { n, max: TUTORIAL.length }))}</small> ${esc(tr(`tut_${step.id}`))}</p>
+      <button class="btn ${step.id === 'end' ? 'primary' : 'ghost'}" data-act="tutorial-end">${esc(tr(step.id === 'end' ? 'tutDone' : 'tutSkip'))}</button>`;
+    if (html !== this.lastTutorial) {
+      this.tutorial.innerHTML = html;
+      this.lastTutorial = html;
+    }
+  }
+
   updatePanel(state, selection) {
     let html;
     if (!selection) html = this.idle(state);
@@ -96,10 +113,12 @@ export class UI {
   }
 
   buildMenu(state, { q, r }) {
-    const cards = BUILD_ORDER.map((type) => {
+    const suggest = tutorialStep(state)?.suggest;
+    const order = suggest ? [suggest, ...BUILD_ORDER.filter((t) => t !== suggest)] : BUILD_ORDER;
+    const cards = order.map((type) => {
       const problem = buildProblem(state, type, q, r);
       const hard = problem && problem !== 'noResources';
-      return `<button class="card ${problem ? 'off' : ''} ${hard ? 'hard' : ''}" data-act="build" data-type="${type}" data-problem="${problem ?? ''}">
+      return `<button class="card ${problem ? 'off' : ''} ${hard ? 'hard' : ''} ${tutorialStep(state)?.suggest === type ? 'suggest' : ''}" data-act="build" data-type="${type}" data-problem="${problem ?? ''}">
         <img src="${this.thumbs[`b_${type}`] ?? ''}" alt=""><b>${esc(tr(`b_${type}`))}</b><span class="costs">${costHtml(BUILDINGS[type].cost, state)}</span></button>`;
     }).join('');
     const tile = state.tiles.get(`${q},${r}`);
@@ -230,6 +249,8 @@ export class UI {
         return h.onRepair();
       case 'train':
         return problem ? this.toast(tr(problem), 'warn') : h.onTrain(el.dataset.unit);
+      case 'tutorial-end':
+        return h.onEndTutorial();
       case 'goals':
         return h.onGoals();
       case 'give':
