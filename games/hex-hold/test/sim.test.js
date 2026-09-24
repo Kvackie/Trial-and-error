@@ -123,3 +123,23 @@ test('the island rises in steps of one level from the beach', async () => {
     assert.ok(levels.size >= 2, `varied ${seed}`);
   }
 });
+
+test('heroes level up from kills, and blacksmith research makes every unit stronger', async () => {
+  const { maxHp, damageOf, heroLevel, startResearch } = await import('../src/sim.js');
+  const state = newGame(21);
+  const u = { id: 500, type: 'knight', name: 'Test', xp: 0, x: 0, z: 0, hp: 150, state: 'idle', path: [], cooldown: 0, target: null };
+  state.units.push(u);
+  const hp1 = maxHp(state, u);
+  const dmg1 = damageOf(state, u);
+  u.xp = 130;
+  assert.equal(heroLevel(u), 3);
+  assert.ok(maxHp(state, u) > hp1 && damageOf(state, u) > dmg1);
+  const smith = { id: 501, type: 'blacksmith', q: 1, r: 0, level: 1, hp: 260, state: 'ready', left: 0, queue: [] };
+  state.buildings.push(smith);
+  state.res = { wood: 300, stone: 300, food: 300, gold: 300 };
+  const before = damageOf(state, u);
+  assert.ok(startResearch(state, smith, 'weapons'));
+  const events = run(state, 46);
+  assert.ok(events.some((e) => e.type === 'researched'));
+  assert.ok(damageOf(state, u) > before);
+});

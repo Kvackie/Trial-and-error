@@ -2,11 +2,22 @@
 import * as THREE from 'three';
 import { UNITS, MONSTERS } from '../data.js';
 import { hero, heroClips } from './assets.js';
+import { heroLevel, maxHp } from '../sim.js';
 import { fromWorld, key } from '../hex.js';
 import { tileTop } from '../world.js';
 import { HealthBar } from './bars.js';
 
 const HERO_SCALE = 0.5;
+const STAR_GEOMETRY = (() => {
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? 0.03 : 0.07;
+    const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+    shape[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r);
+  }
+  return new THREE.ShapeGeometry(shape);
+})();
+const STAR_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xffd23f, depthTest: false, transparent: true });
 
 // --- Monsters, built from simple shapes ----------------------------------------------
 
@@ -122,6 +133,23 @@ class UnitView {
     this.bar.group.position.y = 1.4;
     this.group.add(this.bar.group);
     this.busyUntil = 0;
+  }
+
+  // Gold stars over the head, one per level above the first.
+  setStars(n, camera) {
+    if (n !== this.starCount) {
+      this.starCount = n;
+      this.stars?.removeFromParent();
+      this.stars = new THREE.Group();
+      for (let i = 0; i < n; i++) {
+        const star = new THREE.Mesh(STAR_GEOMETRY, STAR_MATERIAL);
+        star.position.x = (i - (n - 1) / 2) * 0.16;
+        this.stars.add(star);
+      }
+      this.stars.position.y = 1.58;
+      this.group.add(this.stars);
+    }
+    if (this.stars) this.stars.quaternion.copy(camera.quaternion);
   }
 
   play(name, fade = 0.2) {
@@ -268,7 +296,8 @@ export class Actors {
       if (u.heading !== undefined) view.model.rotation.y = u.heading;
       if (now > view.busyUntil) view.play(u.state === 'moving' ? (UNITS[u.type].speed > 1.5 ? 'run' : 'walk') : 'idle');
       view.mixer.update(dt);
-      view.bar.set(u.hp / UNITS[u.type].hp, camera);
+      view.bar.set(u.hp / maxHp(state, u), camera);
+      view.setStars(heroLevel(u) - 1, camera);
     }
     for (const [id, view] of this.units) {
       if (!seen.has(id)) {

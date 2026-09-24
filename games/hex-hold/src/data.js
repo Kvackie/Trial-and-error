@@ -20,9 +20,10 @@ export const BUILDINGS = {
   barracks: { model: 'building_barracks_blue', cost: { wood: 80, stone: 40 }, time: 40, hp: 300, workers: 1, trains: ['knight', 'barbarian'] },
   archery: { model: 'building_archeryrange_blue', cost: { wood: 90, stone: 30 }, time: 40, hp: 260, workers: 1, trains: ['rogue', 'scout'] },
   chapel: { model: 'building_church_blue', cost: { stone: 90, gold: 60 }, time: 50, hp: 260, workers: 1, trains: ['mage'] },
+  blacksmith: { model: 'building_blacksmith_blue', cost: { wood: 70, stone: 60 }, time: 40, hp: 260, workers: 2, research: true },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tower', 'barracks', 'archery', 'chapel'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tower', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 
@@ -70,3 +71,18 @@ export function upgradeCost(type, level) {
   return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * (level === 2 ? 1.8 : 3.5))]));
 }
 export const upgradeTime = (type, level) => Math.round((BUILDINGS[type].time ?? 40) * (level === 2 ? 1.5 : 2.5));
+
+// Heroes grow with experience: from kills (their share of the monster's bounty) and
+// dungeon runs. Each level above the first adds to health and damage.
+export const LEVEL_XP = [0, 40, 120, 250, 450]; // experience needed for levels 1..5
+export const LEVEL_BONUS = 0.12;
+export const KILL_XP = 3; // × the monster's bounty
+export const DUNGEON_XP = 30; // × the tier, for a win (a third of it for a loss)
+export const HERO_NAMES = ['Aldric', 'Bryn', 'Cora', 'Dag', 'Edda', 'Finn', 'Greta', 'Hugo', 'Ivar', 'Juno', 'Kai', 'Lina', 'Mats', 'Nora', 'Otto', 'Pia', 'Rune', 'Sigrid', 'Tove', 'Ulf', 'Vera', 'Wilma', 'Yrsa', 'Ebbe', 'Saga', 'Leif', 'Alva', 'Torsten'];
+
+// Blacksmith research: every tier makes all units hit harder (weapons) or last longer (armour).
+export const RESEARCH = ['weapons', 'armour'];
+export const RESEARCH_MAX = 3;
+export const RESEARCH_BONUS = 0.15;
+export const researchCost = (tier) => ({ stone: 60 * tier, gold: 50 * tier });
+export const researchTime = (tier) => 45 * tier;

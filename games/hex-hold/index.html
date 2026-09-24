@@ -67,6 +67,11 @@
         border: 2px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.05); }
       .pick img { width: 56px; height: 56px; }
       .pick.on { border-color: #ffd98a; background: rgba(255, 217, 138, 0.15); }
+      .card .big { font-size: 40px; line-height: 72px; height: 72px; }
+      .heroes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; max-height: 30vh; overflow-y: auto; }
+      .hero { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+      .hero img { width: 44px; height: 44px; flex: none; }
+      .hero small { color: #b7c6d4; }
       .chance { flex: 1; font-weight: 600; color: #ffd98a; }
 
       #toasts { position: fixed; left: 0; right: 0; top: calc(max(10px, env(safe-area-inset-top)) + 104px); display: grid; justify-items: center; gap: 6px; pointer-events: none; padding: 0 12px; }

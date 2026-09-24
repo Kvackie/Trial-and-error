@@ -148,6 +148,10 @@ const ui = new UI({
     if (sim.train(state, selectedBuilding(), unit)) playSound('coin');
     refresh();
   },
+  onResearch(track) {
+    if (sim.startResearch(state, selectedBuilding(), track)) playSound('hammer');
+    refresh();
+  },
   onSend(ids) {
     const d = state.dungeons.find((x) => x.key === selection.key);
     if (sim.sendParty(state, d, ids)) playSound('horn');
@@ -326,6 +330,14 @@ function react(events, now) {
       case 'trained':
         playSound('correct');
         ui.toast(tr('trained', { name: tr(`u_${e.unit.type}`).toLowerCase() }));
+        break;
+      case 'levelUp':
+        playSound('levelUp');
+        ui.toast(tr('levelUp', { name: e.unit.name ?? tr(`u_${e.unit.type}`), n: e.level }));
+        break;
+      case 'researched':
+        playSound('levelUp');
+        ui.toast(tr('researched', { name: tr(`r_${e.track}`), tier: 'I'.repeat(e.tier) }));
         break;
       case 'wave':
         playSound('horn');

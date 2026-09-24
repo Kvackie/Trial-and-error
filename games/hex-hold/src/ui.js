@@ -1,8 +1,8 @@
 // The HTML layer over the 3D view: resources along the top, and a panel at the bottom
 // for whatever is selected (a tile to build on, a building, units or a dungeon).
-import { BUILDINGS, BUILD_ORDER, RESOURCES, UNITS, dungeonTime, upgradeCost } from './data.js';
+import { BUILDINGS, BUILD_ORDER, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
 import { parse } from './hex.js';
-import { buildProblem, canAfford, partyChance, population, rates, repairCost, storage, trainProblem, upgradeProblem } from './sim.js';
+import { buildProblem, canAfford, heroLevel, maxHp, partyChance, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
 import { tr } from './strings.js';
 
 const ICONS = {
@@ -24,8 +24,8 @@ const costHtml = (cost, state) =>
     .join('');
 
 export class UI {
-  constructor({ onBuild, onUpgrade, onRepair, onTrain, onSend, onSelectAll, onDeselect, onNewGame, onClose }) {
-    this.handlers = { onBuild, onUpgrade, onRepair, onTrain, onSend, onSelectAll, onDeselect, onNewGame, onClose };
+  constructor(handlers) {
+    this.handlers = handlers;
     this.top = document.querySelector('#resources');
     this.wave = document.querySelector('#wave');
     this.panel = document.querySelector('#panel');
@@ -128,6 +128,18 @@ export class UI {
       actions += `<button class="btn primary ${problem ? 'off' : ''}" data-act="upgrade" data-problem="${problem ?? ''}">${esc(tr('upgrade'))} ${costHtml(upgradeCost(b.type, b.level + 1), state)}</button>`;
     } else lines.push(tr('maxLevel'));
     let train = '';
+    if (def.research && b.state !== 'destroyed') {
+      const r = state.research ?? { weapons: 0, armour: 0 };
+      lines.push(tr('researchInfo', { w: r.weapons, wp: Math.round(r.weapons * RESEARCH_BONUS * 100), a: r.armour, ap: Math.round(r.armour * RESEARCH_BONUS * 100) }));
+      if (b.research) lines.push(tr('researching', { name: tr(`r_${b.research.track}`), s: clock(b.research.left) }));
+      train = `<div class="cards">${RESEARCH.map((track) => {
+        const tier = r[track] + 1;
+        const problem = researchProblem(state, b, track);
+        const label = tier > RESEARCH_MAX ? tr('maxLevel') : tr('researchCard', { name: tr(`r_${track}`), tier: 'I'.repeat(tier) });
+        return `<button class="card ${problem ? 'off' : ''}" data-act="research" data-track="${track}" data-problem="${problem ?? ''}">
+          <span class="big">${track === 'weapons' ? '⚔' : '🛡'}</span><b>${esc(label)}</b><span class="costs">${tier > RESEARCH_MAX ? '' : costHtml(researchCost(tier), state)}</span></button>`;
+      }).join('')}</div>`;
+    }
     if (def.trains && b.state !== 'destroyed') {
       train = `<div class="cards">${def.trains
         .map((unit) => {
@@ -143,10 +155,11 @@ export class UI {
 
   unitsPanel(state, ids) {
     const units = state.units.filter((u) => ids.includes(u.id));
-    const counts = {};
-    for (const u of units) counts[u.type] = (counts[u.type] ?? 0) + 1;
-    const list = Object.entries(counts).map(([t, n]) => `${n} × ${tr(`u_${t}`)}`).join(', ');
-    return this.head(esc(list || tr('units')), esc(tr('moveHint'))) +
+    const heroes = units
+      .map((u) => `<li class="hero"><img src="${this.thumbs[`u_${u.type}`] ?? ''}" alt=""><span><b>${esc(u.name ?? tr(`u_${u.type}`))}</b> ${'★'.repeat(heroLevel(u) - 1)}<br>
+        <small>${esc(tr(`u_${u.type}`))} · ${esc(tr('xpLine', { hp: Math.ceil(u.hp), max: maxHp(state, u), xp: u.xp ?? 0 }))}</small></span></li>`)
+      .join('');
+    return this.head(esc(tr('units')), esc(tr('moveHint'))) + `<ul class="heroes">${heroes}</ul>` +
       `<div class="row"><button class="btn" data-act="army">${esc(tr('selectAll'))}</button></div>`;
   }
 
@@ -184,6 +197,8 @@ export class UI {
         return h.onRepair();
       case 'train':
         return problem ? this.toast(tr(problem), 'warn') : h.onTrain(el.dataset.unit);
+      case 'research':
+        return problem ? this.toast(tr(problem), 'warn') : h.onResearch(el.dataset.track);
       case 'army':
         return h.onSelectAll();
       case 'new':

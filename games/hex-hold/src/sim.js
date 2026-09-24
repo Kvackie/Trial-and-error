@@ -15,6 +15,15 @@ import {
   OFFLINE_CAP,
   RESOURCES,
   START_RESOURCES,
+  DUNGEON_XP,
+  HERO_NAMES,
+  KILL_XP,
+  LEVEL_BONUS,
+  LEVEL_XP,
+  RESEARCH_BONUS,
+  RESEARCH_MAX,
+  researchCost,
+  researchTime,
   STORAGE,
   UNIT_REVEAL,
   UNITS,
@@ -48,6 +57,7 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
     shots: [],
     dungeons: dungeons.map((k) => ({ key: k, tier: 1, state: 'ready', left: 0, party: [] })),
     wave: { number: 0, next: FIRST_WAVE },
+    research: { weapons: 0, armour: 0 },
     nextId: 1,
   };
   addBuilding(state, 'castle', 0, 0, { ready: true });
@@ -88,6 +98,41 @@ export const buildingAt = (state, q, r) => state.buildings.find((b) => b.q === q
 export const dungeonAt = (state, q, r) => state.dungeons.find((d) => d.key === key(q, r));
 export const storage = (state) => STORAGE[castle(state).level - 1];
 export const castle = (state) => state.buildings.find((b) => b.type === 'castle');
+// --- Heroes: levels and research -----------------------------------------------------------
+
+export const heroLevel = (u) => LEVEL_XP.filter((xp) => (u.xp ?? 0) >= xp).length;
+const research = (state) => state.research ?? { weapons: 0, armour: 0 };
+export const maxHp = (state, u) => Math.round(UNITS[u.type].hp * (1 + LEVEL_BONUS * (heroLevel(u) - 1)) * (1 + RESEARCH_BONUS * research(state).armour));
+export const damageOf = (state, u) => Math.round(UNITS[u.type].damage * (1 + LEVEL_BONUS * (heroLevel(u) - 1)) * (1 + RESEARCH_BONUS * research(state).weapons));
+
+function giveXp(state, u, amount, events) {
+  if (!u || u.dead) return;
+  const before = heroLevel(u);
+  const hurt = maxHp(state, u) - u.hp;
+  u.xp = (u.xp ?? 0) + amount;
+  if (heroLevel(u) > before) {
+    u.hp = maxHp(state, u) - hurt;
+    events.push({ type: 'levelUp', unit: u, level: heroLevel(u) });
+  }
+}
+
+export function researchProblem(state, b, track) {
+  if (b.state !== 'ready') return 'busy';
+  if (b.research) return 'busy';
+  const tier = research(state)[track] + 1;
+  if (tier > RESEARCH_MAX) return 'maxLevel';
+  if (!canAfford(state, researchCost(tier))) return 'noResources';
+  return null;
+}
+
+export function startResearch(state, b, track) {
+  if (researchProblem(state, b, track)) return false;
+  const tier = research(state)[track] + 1;
+  pay(state, researchCost(tier));
+  b.research = { track, left: researchTime(tier) };
+  return true;
+}
+
 const working = (b) => b.state === 'ready' || b.state === 'upgrading';
 
 export function population(state) {
@@ -243,7 +288,7 @@ export function sendParty(state, dungeon, ids) {
 
 // Chance a party clears a dungeon: their strength against what the tier needs.
 export function partyChance(state, dungeon, ids) {
-  const power = state.units.filter((u) => ids.includes(u.id)).reduce((sum, u) => sum + (u.hp + UNITS[u.type].damage * 8) , 0);
+  const power = state.units.filter((u) => ids.includes(u.id)).reduce((sum, u) => sum + (u.hp + damageOf(state, u) * 8), 0);
   return Math.max(0.05, Math.min(0.95, (power / dungeonNeed(dungeon.tier)) * 0.6));
 }
 
@@ -264,7 +309,9 @@ export function reveal(state, q, r, radius) {
 function spawnUnit(state, b, type, events) {
   const spot = [[b.q, b.r], ...spiral(b.q, b.r, 2)].find(([q, r]) => isPassable(tileAt(state, q, r)) && !buildingAt(state, q, r)) ?? [b.q, b.r];
   const { x, z } = toWorld(...spot);
-  const u = { id: state.nextId++, type, x, z, hp: UNITS[type].hp, state: 'idle', path: [], cooldown: 0, target: null };
+  const name = HERO_NAMES[(state.nextId * 7 + state.units.length * 3) % HERO_NAMES.length];
+  const u = { id: state.nextId++, type, name, xp: 0, x, z, hp: 0, state: 'idle', path: [], cooldown: 0, target: null };
+  u.hp = maxHp(state, u);
   state.units.push(u);
   events.push({ type: 'trained', unit: u });
   return u;
@@ -286,6 +333,18 @@ function economy(state, dt, events) {
         events.push({ type: fresh ? 'built' : 'upgraded', building: b });
         if (BUILDINGS[b.type].reveal) reveal(state, b.q, b.r, BUILDINGS[b.type].reveal);
         else reveal(state, b.q, b.r, 2);
+      }
+    }
+    if (b.state === 'ready' && b.research) {
+      b.research.left -= dt;
+      if (b.research.left <= 0) {
+        const r = research(state);
+        r[b.research.track]++;
+        state.research = r;
+        // Better armour raises everyone's health by the same share.
+        if (b.research.track === 'armour') for (const u of state.units) u.hp = Math.round(u.hp * (1 + RESEARCH_BONUS / (1 + RESEARCH_BONUS * (r.armour - 1))));
+        events.push({ type: 'researched', track: b.research.track, tier: r[b.research.track] });
+        b.research = null;
       }
     }
     if (b.state === 'ready' && b.queue.length) {
@@ -326,7 +385,8 @@ function finishDungeon(state, d, events, rng = Math.random) {
       continue;
     }
     u.state = 'idle';
-    u.hp = won ? UNITS[u.type].hp : Math.ceil(UNITS[u.type].hp * 0.3);
+    giveXp(state, u, Math.round(DUNGEON_XP * d.tier * (won ? 1 : 1 / 3)), events);
+    u.hp = won ? maxHp(state, u) : Math.ceil(maxHp(state, u) * 0.3);
     u.x = exit.x;
     u.z = exit.z;
   }
@@ -414,12 +474,14 @@ function damageBuilding(state, b, amount, events) {
   }
 }
 
-function hitMonster(state, m, amount, events) {
+function hitMonster(state, m, amount, events, by = null) {
   m.hp -= amount;
   if (m.hp <= 0 && !m.dead) {
     m.dead = true;
     addResources(state, { gold: MONSTERS[m.type].bounty });
     events.push({ type: 'monsterDied', monster: m });
+    const killer = by && state.units.find((u) => u.id === by);
+    giveXp(state, killer, MONSTERS[m.type].bounty * KILL_XP, events);
   }
 }
 
@@ -497,9 +559,9 @@ function combat(state, dt, events) {
         u.cooldown = ATTACK_COOLDOWN;
         events.push({ type: 'attack', actor: u });
         if (def.shoots) {
-          state.shots.push({ kind: def.shoots, from: { x: u.x, z: u.z }, to: foe, t: 0, damage: def.damage, splash: def.splash ?? 0 });
+          state.shots.push({ kind: def.shoots, from: { x: u.x, z: u.z }, to: foe, t: 0, damage: damageOf(state, u), splash: def.splash ?? 0, by: u.id });
         } else {
-          hitMonster(state, foe, def.damage, events);
+          hitMonster(state, foe, damageOf(state, u), events, u.id);
         }
       }
     } else if (foe && !u.order) {
@@ -545,8 +607,8 @@ function combat(state, dt, events) {
     if (s.t >= 1 && !s.done) {
       s.done = true;
       if (s.splash) {
-        for (const m of state.monsters) if (alive(m) && worldDist(m, s.to) <= s.splash) hitMonster(state, m, s.damage, events);
-      } else if (alive(s.to)) hitMonster(state, s.to, s.damage, events);
+        for (const m of state.monsters) if (alive(m) && worldDist(m, s.to) <= s.splash) hitMonster(state, m, s.damage, events, s.by);
+      } else if (alive(s.to)) hitMonster(state, s.to, s.damage, events, s.by);
     }
   }
   state.shots = state.shots.filter((s) => !s.done);
@@ -576,8 +638,8 @@ export function tick(state, dt) {
   combat(state, dt, events);
   // A slow heal for units standing idle near buildings.
   for (const u of state.units) {
-    if (u.state === 'idle' && u.hp < UNITS[u.type].hp && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {
-      u.hp = Math.min(UNITS[u.type].hp, u.hp + 2 * dt);
+    if (u.state === 'idle' && u.hp < maxHp(state, u) && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {
+      u.hp = Math.min(maxHp(state, u), u.hp + 2 * dt);
     }
   }
   return events;
