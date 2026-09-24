@@ -61,11 +61,17 @@ export class GameScene extends Phaser.Scene {
       .catch(() => {});
     onSceneLangChange(this, () => this.render());
 
+    this.time.delayedCall(600, () => this.helpIfStuck());
+  }
+
+  // The merchant helps out whenever the shop is stuck (see helpIfBroke).
+  helpIfStuck() {
     const gift = helpIfBroke(this.shop);
-    if (gift) {
-      saveShop(this.shop);
-      this.time.delayedCall(600, () => showToast(this, tr('pity', { name: tr(this.merchant()), n: gift }), { color: GOLD, duration: 3500 }));
-    }
+    if (!gift) return false;
+    saveShop(this.shop);
+    showToast(this, tr('pity', { name: tr(this.merchant()), n: gift }), { color: GOLD, duration: 3500 });
+    this.render();
+    return true;
   }
 
   loadMarket() {
@@ -396,6 +402,7 @@ export class GameScene extends Phaser.Scene {
     emptyCauldron(this.shop);
     saveShop(this.shop);
     this.render();
+    this.helpIfStuck();
   }
 
   brew() {
@@ -453,10 +460,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   buy(offer) {
-    if (!buy(this.shop, offer.id, offer.price)) return this.refuse(tr('tooPoor'));
+    if (!buy(this.shop, offer.id, offer.price)) {
+      if (this.helpIfStuck()) return undefined;
+      return this.refuse(tr('tooPoor'));
+    }
     playSound('coin');
     saveShop(this.shop);
     this.render();
+    this.helpIfStuck();
   }
 
   // --- Sell tab ---------------------------------------------------------------------

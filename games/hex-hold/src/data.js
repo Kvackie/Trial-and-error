@@ -8,8 +8,10 @@ export const MAX_LEVEL = 3;
 
 // terrain: where it may stand. near: a terrain it needs next to it.
 // produce: resource per second at level 1 (scaled by level). workers: people it needs.
+// The castle's own small income needs no workers, so a town can always get going again
+// (say, after losing its lumber mills or with every person in the army).
 export const BUILDINGS = {
-  castle: { model: 'building_castle_blue', hp: 800, pop: 6, reveal: 3, upgrade: { wood: 150, stone: 150 }, buildable: false, attack: { damage: 10, range: 3, cooldown: 1.5 } },
+  castle: { model: 'building_castle_blue', hp: 800, pop: 6, reveal: 3, upgrade: { wood: 150, stone: 150 }, buildable: false, attack: { damage: 10, range: 3, cooldown: 1.5 }, produce: { wood: 0.12, stone: 0.05 } },
   home: { model: 'building_home_A_blue', model2: 'building_home_B_blue', cost: { wood: 25 }, time: 12, hp: 150, pop: 4, produce: { gold: 0.06 } },
   farm: { model: 'building_grain', cost: { wood: 20 }, time: 12, hp: 100, workers: 1, produce: { food: 0.4 }, terrain: ['grass'] },
   lumbermill: { model: 'building_lumbermill_blue', cost: { wood: 20 }, time: 18, hp: 180, workers: 2, produce: { wood: 0.3 }, perNear: 'forest', near: 'forest' },

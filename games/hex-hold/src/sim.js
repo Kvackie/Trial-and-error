@@ -256,7 +256,8 @@ export function rates(state) {
     const def = BUILDINGS[b.type];
     if (!working(b) || !def.produce) continue;
     let factor = b.level === 1 ? 1 : b.level === 2 ? 1.8 : 2.6;
-    if (def.perNear) factor *= Math.min(3, neighbours(b.q, b.r).filter(([q, r]) => tileAt(state, q, r)?.terrain === def.perNear).length);
+    // More forest around means more; with none left (built over) it still makes a little.
+    if (def.perNear) factor *= Math.max(0.5, Math.min(3, neighbours(b.q, b.r).filter(([q, r]) => tileAt(state, q, r)?.terrain === def.perNear).length));
     if (def.workers) factor *= staffed;
     if (hasWonder(state, 'wishingwell')) factor *= WONDER.production;
     for (const [res, amount] of Object.entries(def.produce)) out[res] += amount * factor;

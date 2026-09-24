@@ -309,3 +309,12 @@ test('wonders need a level 3 castle, one of each, and help the whole island', as
   well.state = 'ready';
   assert.ok(Math.abs(rates(state).food - before * 1.25) < 1e-9);
 });
+
+test('a town with no working lumber mill still gets some wood', async () => {
+  const { rates } = await import('../src/sim.js');
+  const state = newGame(71);
+  assert.ok(rates(state).wood > 0, 'the castle makes a little');
+  // Every person in the army: workplaces stand idle, the castle still produces.
+  state.units = Array.from({ length: 8 }, (_, i) => ({ id: 500 + i, type: 'knight', x: 0, z: 0, hp: 150, state: 'idle', path: [] }));
+  assert.ok(rates(state).wood > 0);
+});

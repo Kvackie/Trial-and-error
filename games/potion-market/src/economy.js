@@ -77,11 +77,15 @@ export function saleTotal(potionId, pressure, quality, count, day = dayNumber())
   return total;
 }
 
-// The ingredient merchant's stock for the day: 8 of the ingredients, prices
-// 70–130 % of normal. The same for everyone that day.
+// Always in stock: cheap ingredients that brew a starting recipe on their own
+// (Ember draught, Health tonic), so a shop can never run out of things to make.
+export const STAPLES = ['emberroot', 'dewcap'];
+
+// The ingredient merchant's stock for the day: the staples and 6 more of the
+// ingredients, prices 70–130 % of normal. The same for everyone that day.
 export function merchantStock(day = dayNumber()) {
   const rng = seeded(day * 17 + 3);
-  const shuffled = INGREDIENTS.map((ing) => ({ ing, r: rng() })).sort((a, b) => a.r - b.r);
+  const shuffled = INGREDIENTS.map((ing) => ({ ing, r: STAPLES.includes(ing.id) ? -1 : rng() })).sort((a, b) => a.r - b.r);
   return shuffled
     .slice(0, 8)
     .map(({ ing }) => ({ id: ing.id, price: Math.max(1, Math.round(ing.price * (0.7 + rng() * 0.6))) }))

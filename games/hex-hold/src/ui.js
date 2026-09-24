@@ -148,7 +148,7 @@ export class UI {
       if (def.produce) {
         const f = b.level === 1 ? 1 : b.level === 2 ? 1.8 : 2.6;
         let near = 1;
-        if (def.perNear) near = Math.min(3, [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]].filter(([dq, dr]) => state.tiles.get(`${b.q + dq},${b.r + dr}`)?.terrain === def.perNear).length);
+        if (def.perNear) near = Math.max(0.5, Math.min(3, [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]].filter(([dq, dr]) => state.tiles.get(`${b.q + dq},${b.r + dr}`)?.terrain === def.perNear).length));
         lines.push(tr('produces', { list: Object.entries(def.produce).map(([res, v]) => `${Math.round(v * f * near * 60)} ${tr(res).toLowerCase()}`).join(', ') }));
       }
       if (b.queue.length) lines.push(tr('queue', { list: b.queue.map((j) => `${tr(`u_${j.unit}`)} ${clock(j.left)}`).join(', ') }));

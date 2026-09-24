@@ -26,10 +26,18 @@ test('a wrong mix stays in the cauldron and can be emptied back', () => {
   assert.equal(shop.inventory.pepper, 1);
 });
 
-test('recipes cost gold, and a broke shop gets help once a day', () => {
+test('recipes cost gold, and a stuck shop gets help', () => {
   const shop = newShop();
   assert.equal(learn(shop, 'nightGlass'), false);
   shop.gold = 5;
   assert.ok(helpIfBroke(shop, 100) > 0);
-  assert.equal(helpIfBroke(shop, 100), 0);
+  assert.equal(helpIfBroke(shop, 100), 0, 'not stuck any more');
+  // Ingredients that can't brew any known recipe don't count: still stuck.
+  shop.gold = 5;
+  shop.inventory = { pepper: 1, nullstone: 2 };
+  assert.ok(helpIfBroke(shop, 101) > 0);
+  // Enough to brew something: no help.
+  shop.gold = 5;
+  shop.inventory = { emberroot: 2 };
+  assert.equal(helpIfBroke(shop, 102), 0);
 });

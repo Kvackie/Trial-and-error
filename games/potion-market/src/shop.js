@@ -95,11 +95,32 @@ export function recordSale(shop, id, sold, total) {
   shop.earned += total;
 }
 
-// Out of gold with nothing to brew or sell: the merchant helps out once a day.
+// Whether the ingredients on hand (and in the cauldron) can brew any known recipe.
+// Tries every one- and two-ingredient mix that fits in the cauldron.
+export function canBrewSomething(shop) {
+  const have = { ...shop.inventory };
+  for (const id of shop.cauldron) have[id] = (have[id] ?? 0) + 1;
+  const ids = Object.keys(have).filter((id) => have[id] > 0);
+  for (const recipe of shop.known) {
+    for (const a of ids) {
+      for (const b of ids) {
+        for (let na = 1; na <= Math.min(have[a], MAX_IN_CAULDRON); na++) {
+          const maxB = a === b ? 0 : Math.min(have[b], MAX_IN_CAULDRON - na);
+          for (let nb = 0; nb <= maxB; nb++) {
+            if (brewResult(recipe, [...Array(na).fill(a), ...Array(nb).fill(b)]).ok) return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// Stuck: no potions to sell, nothing brewable on hand and too little gold to buy a
+// brew's worth. The merchant then helps out, as often as it happens.
 export function helpIfBroke(shop, day = dayNumber()) {
   const cheapest = Math.min(...merchantStock(day).map((o) => o.price));
-  const hasSomething = Object.values(shop.inventory).some((n) => n > 0) || Object.keys(shop.stock).length || shop.cauldron.length;
-  if (shop.gold >= cheapest * 3 || hasSomething || shop.pityDay === day) return 0;
+  if (shop.gold >= cheapest * 3 || Object.keys(shop.stock).length || canBrewSomething(shop)) return 0;
   shop.pityDay = day;
   shop.gold += PITY_GOLD;
   return PITY_GOLD;

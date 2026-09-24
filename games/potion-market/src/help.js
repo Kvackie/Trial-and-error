@@ -15,7 +15,7 @@ const HTML = {
         <li>Learn new recipes by tapping a dim one and paying for it.</li>
       </ul>
       <h3>Buy</h3>
-      <p>The merchant sells 8 of the 12 ingredients each day, at prices that change daily.</p>
+      <p>The merchant sells 8 of the 12 ingredients each day, at prices that change daily. Emberroot and dewcap are always in stock, and if you ever run out of gold with nothing to brew or sell, the merchant helps you start again.</p>
       <h3>Sell</h3>
       <ul>
         <li>Prices are the same for everyone. Every potion sold, by anyone, pushes that potion's price down; prices recover over a few hours.</li>
@@ -34,7 +34,7 @@ const HTML = {
         <li>Lär dig nya recept genom att trycka på ett nedtonat och betala för det.</li>
       </ul>
       <h3>Köp</h3>
-      <p>Handlaren säljer 8 av de 12 ingredienserna varje dag, till priser som ändras dagligen.</p>
+      <p>Handlaren säljer 8 av de 12 ingredienserna varje dag, till priser som ändras dagligen. Glödrot och daggskivling finns alltid, och om du någon gång står utan guld och inte har något att brygga eller sälja hjälper handlaren dig att börja om.</p>
       <h3>Sälj</h3>
       <ul>
         <li>Priserna är desamma för alla. Varje dryck som säljs, av vem som helst, sänker priset på den drycken; priserna återhämtar sig under några timmar.</li>

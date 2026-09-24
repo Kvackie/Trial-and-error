@@ -33,6 +33,8 @@ test('the daily hot potion and merchant are the same for everyone that day', () 
   assert.equal(hotPotion(20000), hotPotion(20000));
   assert.deepEqual(merchantStock(20000), merchantStock(20000));
   assert.equal(merchantStock(20000).length, 8);
+  // The staples are in stock every day.
+  for (let day = 20000; day < 20060; day++) for (const id of ['emberroot', 'dewcap']) assert.ok(merchantStock(day).some((o) => o.id === id));
   const hots = new Set(Array.from({ length: 60 }, (_, d) => hotPotion(d)));
   assert.ok(hots.size > 6);
 });
