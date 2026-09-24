@@ -266,8 +266,9 @@ export class Board {
       const start = [];
       for (const group of groups) {
         start.push(...group.cells);
-        const special = this.specialFor(group);
-        if (special) created.push({ special, at: this.specialPosition(group, cascade === 1 ? [b, a] : []) });
+        // Only the match the player made leaves a special; chain reactions don't.
+        const special = cascade === 1 ? this.specialFor(group) : null;
+        if (special) created.push({ special, at: this.specialPosition(group, [b, a]) });
       }
       const result = this.expandClear(start, []);
       points += this.applyClear(result, created, cascade, steps);

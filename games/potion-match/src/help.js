@@ -24,7 +24,7 @@ const HTML = {
         <li>Stuck? After a few seconds a possible move starts to wiggle.</li>
       </ul>
       <h3>Special potions</h3>
-      <p>Bigger matches leave a special potion behind. Specials don't match by colour: they go off when you swap them
+      <p>A bigger match you make yourself leaves a special potion behind (matches that happen as potions fall don't). Specials don't match by colour: they go off when you swap them
         with a neighbour, or when another special's blast reaches them.</p>
       ${specials()}
       <p>Swapping two rainbows together clears the whole board.</p>
@@ -44,7 +44,7 @@ const HTML = {
         <li>Fastnat? Efter några sekunder börjar ett möjligt drag vicka.</li>
       </ul>
       <h3>Specialdrycker</h3>
-      <p>Större matchningar lämnar kvar en specialdryck. Specialdrycker matchas inte efter färg: de utlöses när du byter
+      <p>En större matchning som du gör själv lämnar kvar en specialdryck (matchningar som uppstår när drycker faller gör det inte). Specialdrycker matchas inte efter färg: de utlöses när du byter
         plats på dem med en granne, eller när en annan specialdrycks explosion når dem.</p>
       ${specials()}
       <p>Byter du plats på två regnbågar rensas hela spelplanen.</p>
