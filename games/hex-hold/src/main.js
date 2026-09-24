@@ -148,6 +148,19 @@ const ui = new UI({
     if (sim.train(state, selectedBuilding(), unit)) playSound('coin');
     refresh();
   },
+  onGoals() {
+    selection = { kind: 'goals' };
+    playSound('click');
+    refresh();
+  },
+  onTrade(give, get) {
+    const n = sim.trade(state, selectedBuilding(), give, get);
+    if (n) {
+      playSound('coin');
+      ui.toast(tr('traded', { n, res: tr(get).toLowerCase() }));
+    }
+    refresh();
+  },
   onResearch(track) {
     if (sim.startResearch(state, selectedBuilding(), track)) playSound('hammer');
     refresh();
@@ -330,6 +343,10 @@ function react(events, now) {
       case 'trained':
         playSound('correct');
         ui.toast(tr('trained', { name: tr(`u_${e.unit.type}`).toLowerCase() }));
+        break;
+      case 'goal':
+        playSound('discover');
+        ui.toast(tr('goalDone', { name: tr(`g_${e.goal.id}`), reward: ui.lootText(e.goal.reward) }));
         break;
       case 'levelUp':
         playSound('levelUp');

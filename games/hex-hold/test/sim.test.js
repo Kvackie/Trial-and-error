@@ -155,3 +155,21 @@ test('every fifth wave brings a titan, and catapults hit several monsters', asyn
   run(state, 2);
   assert.ok(state.monsters.every((m) => m.hp < 100), 'splash hit all three');
 });
+
+test('taverns make homes hold more, markets trade, and goals pay out once', async () => {
+  const { population, trade } = await import('../src/sim.js');
+  const state = newGame(8);
+  const add = (id, type, q, r) => state.buildings.push({ id, type, q, r, level: 1, hp: 100, state: 'ready', left: 0, queue: [] });
+  add(600, 'home', 1, 0);
+  add(601, 'home', -1, 0);
+  const before = population(state).cap;
+  add(602, 'tavern', 0, 1);
+  assert.equal(population(state).cap, before + 2);
+  add(603, 'market', 0, -1);
+  state.res.wood = 100;
+  const got = trade(state, state.buildings.at(-1), 'wood', 'gold');
+  assert.ok(got > 0 && state.res.wood === 70);
+  const events = run(state, 2);
+  assert.ok(events.some((e) => e.type === 'goal' && e.goal.id === 'homes'));
+  assert.ok(!run(state, 2).some((e) => e.type === 'goal' && e.goal.id === 'homes'));
+});

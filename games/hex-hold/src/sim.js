@@ -15,6 +15,9 @@ import {
   OFFLINE_CAP,
   RESOURCES,
   START_RESOURCES,
+  GOALS,
+  TRADE_AMOUNT,
+  tradeGet,
   DUNGEON_XP,
   HERO_NAMES,
   KILL_XP,
@@ -58,6 +61,8 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
     dungeons: dungeons.map((k) => ({ key: k, tier: 1, state: 'ready', left: 0, party: [] })),
     wave: { number: 0, next: FIRST_WAVE },
     research: { weapons: 0, armour: 0 },
+    stats: { kills: 0, dungeonWins: 0, deepest: 0, titans: 0 },
+    goals: [],
     nextId: 1,
   };
   addBuilding(state, 'castle', 0, 0, { ready: true });
@@ -98,6 +103,35 @@ export const buildingAt = (state, q, r) => state.buildings.find((b) => b.q === q
 export const dungeonAt = (state, q, r) => state.dungeons.find((d) => d.key === key(q, r));
 export const storage = (state) => STORAGE[castle(state).level - 1];
 export const castle = (state) => state.buildings.find((b) => b.type === 'castle');
+const stat = (state) => (state.stats ??= { kills: 0, dungeonWins: 0, deepest: 0, titans: 0 });
+
+// --- Trading and goals ------------------------------------------------------------------
+
+export function tradeProblem(state, market, give, get) {
+  if (!market || market.state !== 'ready') return 'busy';
+  if (give === get) return 'occupied';
+  if (state.res[give] < TRADE_AMOUNT) return 'noResources';
+  return null;
+}
+
+export function trade(state, market, give, get) {
+  if (tradeProblem(state, market, give, get)) return 0;
+  const amount = tradeGet(give, get, market.level);
+  state.res[give] -= TRADE_AMOUNT;
+  addResources(state, { [get]: amount });
+  return amount;
+}
+
+function checkGoals(state, events) {
+  state.goals ??= [];
+  for (const goal of GOALS) {
+    if (state.goals.includes(goal.id) || !goal.check(state)) continue;
+    state.goals.push(goal.id);
+    addResources(state, goal.reward);
+    events.push({ type: 'goal', goal });
+  }
+}
+
 // --- Heroes: levels and research -----------------------------------------------------------
 
 export const heroLevel = (u) => LEVEL_XP.filter((xp) => (u.xp ?? 0) >= xp).length;
@@ -138,11 +172,17 @@ const working = (b) => b.state === 'ready' || b.state === 'upgrading';
 export function population(state) {
   let cap = 0;
   let used = 0;
+  let homes = 0;
+  let tavern = 0;
   for (const b of state.buildings) {
     const def = BUILDINGS[b.type];
     if (working(b) && def.pop) cap += def.pop * b.level;
+    if (working(b) && b.type === 'home') homes++;
+    if (working(b) && def.homeBonus) tavern += def.homeBonus * b.level;
     if (b.state !== 'destroyed' && def.workers) used += def.workers;
   }
+  // Taverns make homes hold more people (up to 3 more each).
+  cap += homes * Math.min(3, tavern);
   used += state.units.length;
   return { cap, used };
 }
@@ -393,6 +433,9 @@ function finishDungeon(state, d, events, rng = Math.random) {
   state.units = state.units.filter((u) => !lost.includes(u));
   let loot = null;
   if (won) {
+    const stats = stat(state);
+    stats.dungeonWins++;
+    stats.deepest = Math.max(stats.deepest, d.tier);
     loot = dungeonLoot(d.tier);
     addResources(state, loot);
     d.tier = Math.min(DUNGEON_MAX_TIER, d.tier + 1);
@@ -480,6 +523,9 @@ function hitMonster(state, m, amount, events, by = null) {
     m.dead = true;
     addResources(state, { gold: MONSTERS[m.type].bounty });
     events.push({ type: 'monsterDied', monster: m });
+    const stats = stat(state);
+    stats.kills++;
+    if (MONSTERS[m.type].boss) stats.titans++;
     const killer = by && state.units.find((u) => u.id === by);
     giveXp(state, killer, MONSTERS[m.type].bounty * KILL_XP, events);
   }
@@ -636,6 +682,11 @@ export function tick(state, dt) {
     state.wave.next = WAVE_EVERY;
   }
   combat(state, dt, events);
+  state.goalTimer = (state.goalTimer ?? 0) - dt;
+  if (state.goalTimer <= 0) {
+    state.goalTimer = 1;
+    checkGoals(state, events);
+  }
   // A slow heal for units standing idle near buildings.
   for (const u of state.units) {
     if (u.state === 'idle' && u.hp < maxHp(state, u) && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {

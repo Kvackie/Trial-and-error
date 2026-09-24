@@ -77,6 +77,15 @@
       .hero { display: flex; gap: 8px; align-items: center; font-size: 14px; }
       .hero img { width: 44px; height: 44px; flex: none; }
       .hero small { color: #b7c6d4; }
+      .trade { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: 14px; }
+      .trade .chips { display: flex; gap: 6px; }
+      .pick.small { width: 48px; height: 44px; padding: 4px; display: grid; place-items: center; }
+      .pick.small svg { width: 26px; height: 26px; }
+      .goals { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; max-height: 38vh; overflow-y: auto; font-size: 14px; }
+      .goals li { display: flex; gap: 8px; align-items: center; }
+      .goals li b { flex: 1; font-weight: 500; }
+      .goals li.done { color: #8fbf8a; }
+      .goals li.done b { text-decoration: line-through; }
       .chance { flex: 1; font-weight: 600; color: #ffd98a; }
 
       #toasts { position: fixed; left: 0; right: 0; top: calc(max(10px, env(safe-area-inset-top)) + 104px); display: grid; justify-items: center; gap: 6px; pointer-events: none; padding: 0 12px; }

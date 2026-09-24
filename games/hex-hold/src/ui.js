@@ -1,8 +1,8 @@
 // The HTML layer over the 3D view: resources along the top, and a panel at the bottom
 // for whatever is selected (a tile to build on, a building, units or a dungeon).
-import { BUILDINGS, BUILD_ORDER, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
+import { BUILDINGS, BUILD_ORDER, GOALS, TRADE_AMOUNT, tradeGet, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
 import { parse } from './hex.js';
-import { buildProblem, canAfford, heroLevel, maxHp, partyChance, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
+import { buildProblem, canAfford, heroLevel, maxHp, partyChance, tradeProblem, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
 import { tr } from './strings.js';
 
 const ICONS = {
@@ -71,6 +71,7 @@ export class UI {
     else if (selection.kind === 'building') html = this.buildingPanel(state, state.buildings.find((b) => b.id === selection.id));
     else if (selection.kind === 'units') html = this.unitsPanel(state, selection.ids);
     else if (selection.kind === 'dungeon') html = this.dungeonPanel(state, state.dungeons.find((d) => d.key === selection.key));
+    else if (selection.kind === 'goals') html = this.goalsPanel(state);
     if (html !== this.lastPanel) {
       // Keep the horizontal scroll of card rows while the panel refreshes.
       const scroll = this.panel.querySelector('.cards')?.scrollLeft ?? 0;
@@ -90,6 +91,7 @@ export class UI {
     const n = state.units.filter((u) => u.state !== 'away').length;
     return `<div class="row idle"><p class="hint">${esc(tr('buildHint'))}</p>
       ${n ? `<button class="btn" data-act="army">${esc(tr('units'))} (${n})</button>` : ''}
+      <button class="btn" data-act="goals">${esc(tr('goals'))} ${(state.goals ?? []).length}/${GOALS.length}</button>
       <button class="btn ghost" data-act="new">${esc(tr('newGame'))}</button></div>`;
   }
 
@@ -136,6 +138,18 @@ export class UI {
       actions += `<button class="btn primary ${problem ? 'off' : ''}" data-act="upgrade" data-problem="${problem ?? ''}">${esc(tr('upgrade'))} ${costHtml(upgradeCost(b.type, b.level + 1), state)}</button>`;
     } else lines.push(tr('maxLevel'));
     let train = '';
+    if (def.homeBonus && b.state !== 'destroyed') lines.push(tr('tavernInfo', { n: Math.min(3, def.homeBonus * b.level) }));
+    if (b.type === 'market' && b.state === 'ready') {
+      const give = this.give ?? 'wood';
+      const get = this.get ?? 'gold';
+      const chips = (which, current) =>
+        RESOURCES.map((r) => `<button class="pick small ${r === current ? 'on' : ''}" data-act="${which}" data-res="${r}">${ICONS[r]}</button>`).join('');
+      const problem = tradeProblem(state, b, give, get);
+      train = `<div class="trade"><span>${esc(tr('give'))}</span><div class="chips">${chips('give', give)}</div>
+        <span>${esc(tr('get'))}</span><div class="chips">${chips('get', get)}</div></div>
+        <div class="row"><button class="btn primary ${problem ? 'off' : ''}" data-act="trade" data-problem="${problem ?? ''}">${esc(tr('trade'))}
+          <span class="cost">${ICONS[give]}${TRADE_AMOUNT}</span> → <span class="cost">${ICONS[get]}${give === get ? 0 : tradeGet(give, get, b.level)}</span></button></div>`;
+    }
     if (def.research && b.state !== 'destroyed') {
       const r = state.research ?? { weapons: 0, armour: 0 };
       lines.push(tr('researchInfo', { w: r.weapons, wp: Math.round(r.weapons * RESEARCH_BONUS * 100), a: r.armour, ap: Math.round(r.armour * RESEARCH_BONUS * 100) }));
@@ -159,6 +173,15 @@ export class UI {
     }
     return this.head(`${esc(tr(`b_${b.type}`))} <span class="lvl">${esc(tr('level', { n: b.level }))}</span>`) +
       `<ul class="lines">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>${train}<div class="row">${actions}</div>`;
+  }
+
+  goalsPanel(state) {
+    const done = state.goals ?? [];
+    const rows = GOALS.map((g) => {
+      const reward = Object.entries(g.reward).map(([r, v]) => `<span class="cost">${ICONS[r]}${v}</span>`).join(' ');
+      return `<li class="${done.includes(g.id) ? 'done' : ''}"><span>${done.includes(g.id) ? '✓' : '○'}</span><b>${esc(tr(`g_${g.id}`))}</b>${reward}</li>`;
+    }).join('');
+    return this.head(esc(tr('goalsTitle', { n: done.length, max: GOALS.length }))) + `<ul class="goals">${rows}</ul>`;
   }
 
   unitsPanel(state, ids) {
@@ -205,6 +228,15 @@ export class UI {
         return h.onRepair();
       case 'train':
         return problem ? this.toast(tr(problem), 'warn') : h.onTrain(el.dataset.unit);
+      case 'goals':
+        return h.onGoals();
+      case 'give':
+      case 'get':
+        this[el.dataset.act] = el.dataset.res;
+        this.lastPanel = '';
+        return h.onClose(true);
+      case 'trade':
+        return problem ? this.toast(tr(problem), 'warn') : h.onTrade(this.give ?? 'wood', this.get ?? 'gold');
       case 'research':
         return problem ? this.toast(tr(problem), 'warn') : h.onResearch(el.dataset.track);
       case 'army':

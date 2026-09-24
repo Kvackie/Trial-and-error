@@ -20,11 +20,12 @@ export const BUILDINGS = {
   barracks: { model: 'building_barracks_blue', cost: { wood: 80, stone: 40 }, time: 40, hp: 300, workers: 1, trains: ['knight', 'barbarian'] },
   archery: { model: 'building_archeryrange_blue', cost: { wood: 90, stone: 30 }, time: 40, hp: 260, workers: 1, trains: ['rogue', 'scout'] },
   chapel: { model: 'building_church_blue', cost: { stone: 90, gold: 60 }, time: 50, hp: 260, workers: 1, trains: ['mage'] },
+  tavern: { model: 'building_tavern_blue', cost: { wood: 60, stone: 30, gold: 20 }, time: 35, hp: 220, workers: 1, homeBonus: 1 },
   blacksmith: { model: 'building_blacksmith_blue', cost: { wood: 70, stone: 60 }, time: 40, hp: 260, workers: 2, research: true },
   catapult: { model: 'building_tower_catapult_blue', cost: { wood: 60, stone: 120, gold: 40 }, time: 50, hp: 420, workers: 2, reveal: 3, attack: { damage: 28, range: 5, cooldown: 4, splash: 1, shot: 'boulder' }, terrain: ['grass', 'hills', 'forest'] },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 
@@ -90,3 +91,29 @@ export const RESEARCH_MAX = 3;
 export const RESEARCH_BONUS = 0.15;
 export const researchCost = (tier) => ({ stone: 60 * tier, gold: 50 * tier });
 export const researchTime = (tier) => 45 * tier;
+
+// Market trading: give TRADE_AMOUNT of one resource for some of another.
+export const TRADE_AMOUNT = 30;
+export const TRADE_VALUE = { wood: 1, stone: 1.4, food: 1, gold: 2 };
+export const tradeGet = (give, get, marketLevel) => Math.floor(((TRADE_AMOUNT * TRADE_VALUE[give]) / TRADE_VALUE[get]) * (0.5 + 0.1 * marketLevel));
+
+// Goals: done automatically the moment they're true, each with a reward.
+export const GOALS = [
+  { id: 'homes', reward: { wood: 40 }, check: (s) => count(s, 'home') >= 2 },
+  { id: 'farm', reward: { food: 40 }, check: (s) => count(s, 'farm') + count(s, 'windmill') + count(s, 'watermill') >= 1 },
+  { id: 'wood', reward: { stone: 40 }, check: (s) => count(s, 'lumbermill') >= 1 },
+  { id: 'stone', reward: { wood: 50 }, check: (s) => count(s, 'mine') >= 1 },
+  { id: 'army', reward: { gold: 50 }, check: (s) => s.units.length >= 3 },
+  { id: 'kills', reward: { gold: 60 }, check: (s) => (s.stats?.kills ?? 0) >= 10 },
+  { id: 'dungeon', reward: { stone: 80 }, check: (s) => (s.stats?.dungeonWins ?? 0) >= 1 },
+  { id: 'research', reward: { gold: 80 }, check: (s) => (s.research?.weapons ?? 0) + (s.research?.armour ?? 0) >= 1 },
+  { id: 'castle', reward: { wood: 150 }, check: (s) => s.buildings.some((b) => b.type === 'castle' && b.level >= 2) },
+  { id: 'hero', reward: { food: 120 }, check: (s) => s.units.some((u) => (u.xp ?? 0) >= LEVEL_XP[2]) },
+  { id: 'wave5', reward: { gold: 150 }, check: (s) => s.wave.number >= 5 && !s.monsters.length },
+  { id: 'people', reward: { stone: 150 }, check: (s) => s.buildings.filter((b) => b.state !== 'destroyed').reduce((n, b) => n + (BUILDINGS[b.type].pop ?? 0) * b.level, 0) >= 30 },
+  { id: 'deep', reward: { gold: 200 }, check: (s) => (s.stats?.deepest ?? 0) >= 3 },
+  { id: 'titan', reward: { gold: 300 }, check: (s) => (s.stats?.titans ?? 0) >= 1 },
+];
+function count(state, type) {
+  return state.buildings.filter((b) => b.type === type && b.state !== 'building').length;
+}
