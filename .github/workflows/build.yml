@@ -291,8 +291,8 @@ jobs:
             cp -r "build/$game" "site/$game"
             apk=false
             if [ "$APK_BUILT" = true ] || [ "$previous_apk" = true ]; then apk=true; fi
-            jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" \
-              '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$game/build.json"
+            jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" --argjson run "$GITHUB_RUN_NUMBER" \
+              '{sha: $sha, builtAt: $at, apk: $apk, run: $run}' > "site/$game/build.json"
           done
           # Games removed from the repo come off the site too.
           for dir in site/*/; do

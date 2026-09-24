@@ -57,10 +57,13 @@ const TEXT = {
   apk: both('Android app (APK)', 'Android-app (APK)'),
   allApk: both('All games in one Android app (APK)', 'Alla spel i en Android-app (APK)'),
   updated: (date) => both(`Updated ${date}`, `Uppdaterad ${date}`),
+  site: (version) => both(`Site version ${version}`, `Webbplatsens version ${version}`),
   more: both('More games', 'Fler spel'),
 };
 
-export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPOSITORY, scripts = '' } = {}) {
+export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPOSITORY, run = process.env.GITHUB_RUN_NUMBER, scripts = '' } = {}) {
+  // The whole site's version: the run that last published it (none for a local build).
+  const siteVersion = run ? `v${escapeHtml(String(run))} · ${new Date().toISOString().slice(0, 10)}` : '';
   const games = listGames().filter((game) => fs.existsSync(path.join(siteDir, game.id, 'index.html')));
   const download = (tag, file) => `https://github.com/${repo}/releases/download/${tag}/${file}`;
 
@@ -68,7 +71,9 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
     .map((game) => {
       const info = app ? {} : readJson(path.join(siteDir, game.id, 'build.json'));
       const apk = info.apk && repo ? `<a class="apk" href="${download(`${game.id}-latest`, `${game.id}.apk`)}">${TEXT.apk}</a>` : '';
-      const updated = info.builtAt ? `<p class="meta">${TEXT.updated(escapeHtml(info.builtAt.slice(0, 10)))}</p>` : '';
+      // Version: the build workflow's run number that last built the game, and when.
+      const version = info.run ? ` · v${escapeHtml(String(info.run))}` : '';
+      const updated = info.builtAt ? `<p class="meta">${TEXT.updated(escapeHtml(info.builtAt.slice(0, 10)))}${version}</p>` : '';
       const sv = game.sv ?? {};
       const icon = game.icon ? `<img class="icon" src="./${game.id}/${escapeHtml(game.icon)}" alt="" width="72" height="72" />` : '';
       return `      <li class="card">
@@ -149,6 +154,7 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
       .play h2 { margin: 0 0 6px; font-size: 1.25rem; color: var(--accent); }
       .play p { margin: 0; line-height: 1.4; }
       .meta { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
+      .version { margin: 32px 0 0; text-align: center; font-size: 0.8rem; color: var(--muted); }
       .apk { display: inline-block; margin-top: 10px; font-size: 0.9rem; color: var(--text); }
       .empty { color: var(--muted); }
       .more { margin: 32px 0 12px; font-size: 1.2rem; color: var(--muted); font-weight: 600; }
@@ -172,7 +178,8 @@ ${hubApp ? `      <a class="all-apk" href="${download(HUB_APP.tag, HUB_APP.file)
       <ul>
 ${others}
       </ul>
-    </main>
+${siteVersion ? `      <p class="version">${TEXT.site(siteVersion)}</p>
+` : ''}    </main>
     <script>
       document.querySelectorAll('[data-set-lang]').forEach(function (button) {
         var mark = function () { button.setAttribute('aria-pressed', String(button.dataset.setLang === document.documentElement.lang)); };

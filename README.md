@@ -83,6 +83,11 @@ The hub page (`scripts/build-hub.mjs`) lists every game built into the site, the
 linking to the owner's other published games (Eternal Alchemy and Dark Fantasy Settlement). Those links,
 their descriptions and icons are in `OTHER_GAMES` at the top of that script.
 
+**Versions:** each game's card shows when it was last built and its version, the number of
+the build workflow run that built it (e.g. `Updated 2026-09-24 · v19`), and the bottom of the
+page shows the run that last published the site. The deploy job stores both in the game's
+`build.json` on `gh-pages`.
+
 ### Add a game
 
 ```sh
