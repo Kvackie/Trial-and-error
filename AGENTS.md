@@ -74,7 +74,7 @@ how games here must be built. Read both before starting.
   `shared/leaderboard.js`: a trophy button in the header and a submit prompt on a new
   best. Register the game in `leaderboard/src/rules.js`. Store nothing about players
   beyond a nickname and a random device id.
-- Games that share data between players (like Wild Pond and Potion Market) add routes
+- Games that share data between players (like Potion Market) add routes
   to the same service in `leaderboard/src/`, one file per game, and keep their checks in
   the game's own rules files so the game and the service agree. Keep writes to a few
   database rows per player action, rate-limit them with `leaderboard/src/limits.js`,

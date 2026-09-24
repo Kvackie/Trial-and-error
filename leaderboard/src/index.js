@@ -1,17 +1,15 @@
 // Online service for the games.
 //   GET  /scores?game=<game>&limit=<n>     top scores, best first
 //   POST /scores  { game, name, score, client }   submit a score; returns its rank
-//   /discoveries, /pond…, /market…         see discoveries.js, pond.js, market.js
+//   /discoveries, /market…                 see discoveries.js, market.js
 import { GAMES, KEEP_PER_GAME, MAX_PER_HOUR, MIN_SECONDS_BETWEEN, TOP_LIMIT, allowedOrigin, validateSubmission } from './rules.js';
 import { hashAddress } from './limits.js';
 import { discoveries } from './discoveries.js';
-import { pond } from './pond.js';
 import { market } from './market.js';
 
 // Other routes, by the first part of the path.
 const ROUTES = {
   discoveries: (request, env, url, reply) => discoveries(request, env.DB, url, reply),
-  pond: (request, env, url, reply) => pond(request, env.DB, url.pathname, reply),
   market: (request, env, url, reply) => market(request, env.DB, url.pathname, reply),
 };
 

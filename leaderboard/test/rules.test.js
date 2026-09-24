@@ -36,7 +36,6 @@ test('names are tidied and discoveries are known per game', async () => {
   const { cleanName, DISCOVERIES } = await import('../src/rules.js');
   assert.equal(cleanName('  Ada  L '), 'Ada L');
   assert.equal(cleanName('<b>'), null);
-  assert.ok(DISCOVERIES['wild-pond'].has('crest:crown'));
-  assert.ok(!DISCOVERIES['wild-pond'].has('crest:none'));
+  assert.equal(DISCOVERIES['wild-pond'], undefined);
   assert.ok(DISCOVERIES['potion-market'].has('nightGlass'));
 });

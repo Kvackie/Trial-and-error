@@ -14,7 +14,6 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Block Drop (Blockfall) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
 | Potion Match (Trolldrycker) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
 | Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
-| Wild Pond (Vilda dammen) | `games/wild-pond/` | Breed drawn-in-code pond creatures to discover rare features, and trade them with other players through a shared online pond. |
 | Potion Market (Trolldrycksmarknaden) | `games/potion-market/` | Brew potions by balancing five essences (art and recipes from Eternal Alchemy) and sell them on a market shared by every player. |
 | Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
 
@@ -35,7 +34,7 @@ Every 2D game has the same frame around it (3D games choose their own, see [Add 
 games/<game>/      one folder per game: index.html, src/, public/, game.json (and test/, tools/ where needed)
 template/          starting point copied by `npm run new-game` (Phaser, 2D)
 template-3d/       starting point copied by `npm run new-game -- <game> "Name" --3d` (Three.js)
-leaderboard/       online service: leaderboard, shared pond and market (Cloudflare Worker + D1 database)
+leaderboard/       online service: leaderboard and shared market (Cloudflare Worker + D1 database)
 shared/            code and assets every game reuses (see below)
 scripts/           build, dev, hub and Android helpers
 android/           shared Android project, reused for every game
@@ -180,7 +179,7 @@ All text exists in English and Swedish.
 license or download. Games call `playSound('name')`; the available names are listed in `SOUNDS` in that
 file (general: `click`, `gameOver`; pieces: `move`, `rotate`, `drop`, `clear`; matching: `select`,
 `swap`, `invalid`, `match`, `special`, `blast`, `shuffle`; exploring: `step`, `bump`, `chest`, `correct`,
-`wrong`, `levelUp`, `checkpoint`; creatures: `hatch`, `splash`, `catch`, `discover`; shop: `bubble`,
+`wrong`, `levelUp`, `checkpoint`; water and finds: `splash`, `discover`; shop: `bubble`,
 `brew`, `coin`; town and battle: `hammer`, `clash`, `twang`, `spell`, `horn`, `alarm`, `crumble`). Add new sounds there rather than in a game. Volume and mute come from
 Settings and apply to every game.
 
@@ -192,20 +191,17 @@ the APKs are sent when the device is back online.
 
 The same service holds the data the online games share:
 
-- **Wild Pond:** creatures released into the shared pond (genes, nickname, device id; the
-  oldest go once there are 400), fished out by other players.
 - **Potion Market:** one "selling pressure" number per potion, which lowers its price for
   everyone and halves every 6 hours. The daily hot potion and the merchant's stock are
   worked out from the date, so they need no storage.
-- **First finds:** the first nickname to find each rare Wild Pond feature or brew each
-  Potion Market recipe.
+- **First finds:** the first nickname to brew each Potion Market recipe.
 
 The rules those routes check (possible genes, prices) are the games' own files
-(`games/wild-pond/src/genes.js`, `games/potion-market/src/economy.js`), imported by the
+(`games/potion-market/src/economy.js`), imported by the
 Worker. Every write is rate-limited per device and per network, and each costs only a
 few database rows, so the service stays well inside Cloudflare's free plan. Without the
-service (a local build, or offline), Wild Pond catches wild creatures and Potion Market
-uses a market kept on the device.
+service (a local build, or offline), Potion Market uses a market kept on
+the device.
 
 - **Service:** `leaderboard/` is a Cloudflare Worker with a D1 database. It accepts scores
   only from the published site, the Android apps and local development, rejects

@@ -25,7 +25,6 @@ on:
           - lantern-maze
           - potion-market
           - potion-match
-          - wild-pond
           # games:end
       apk:
         description: Also build the Android APK
@@ -295,6 +294,14 @@ jobs:
             if [ "$APK_BUILT" = true ] || [ "$previous_apk" = true ]; then apk=true; fi
             jq -n --arg sha "$GITHUB_SHA" --arg at "$(date -u +%FT%TZ)" --argjson apk "$apk" \
               '{sha: $sha, builtAt: $at, apk: $apk}' > "site/$game/build.json"
+          done
+          # Games removed from the repo come off the site too.
+          for dir in site/*/; do
+            game=$(basename "$dir")
+            if [ -f "site/$game/build.json" ] && [ ! -f "games/$game/game.json" ]; then
+              echo "Removing $game (no longer in the repo)"
+              rm -rf "site/$game"
+            fi
           done
           touch site/.nojekyll
 

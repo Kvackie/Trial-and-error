@@ -1,6 +1,5 @@
 // What the service accepts. Kept apart from the request handling so it can be
 // tested in Node.
-import { RARE } from '../../games/wild-pond/src/genes.js';
 import { POTIONS } from '../../games/potion-market/src/data.js';
 
 // One entry per game with a leaderboard. max rejects impossible scores.
@@ -8,13 +7,11 @@ export const GAMES = {
   'block-drop': { max: 5_000_000 },
   'potion-match': { max: 50_000_000 },
   'lantern-maze': { max: 1_000 }, // deepest level reached
-  'wild-pond': { max: 32 }, // collection book entries found
   'potion-market': { max: 1_000_000_000 }, // gold earned from sales
 };
 
 // What each game can record a "first to discover" for.
 export const DISCOVERIES = {
-  'wild-pond': RARE,
   'potion-market': new Set(POTIONS.map((p) => p.id)),
 };
 

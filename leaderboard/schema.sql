@@ -16,14 +16,9 @@ CREATE TABLE IF NOT EXISTS recent (
 );
 CREATE INDEX IF NOT EXISTS recent_by_key ON recent (key, at);
 
--- Wild Pond: creatures released into the shared pond, waiting to be caught.
-CREATE TABLE IF NOT EXISTS pond (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  genes TEXT NOT NULL,
-  name TEXT,
-  client TEXT NOT NULL,
-  at INTEGER NOT NULL
-);
+-- Wild Pond was removed: its shared pond, scores and first finds go too.
+DROP TABLE IF EXISTS pond;
+DELETE FROM scores WHERE game = 'wild-pond';
 
 -- Potion Market: selling pressure per potion (decays over time, see market.js).
 CREATE TABLE IF NOT EXISTS market (
@@ -41,3 +36,4 @@ CREATE TABLE IF NOT EXISTS discoveries (
   at INTEGER NOT NULL,
   PRIMARY KEY (game, key)
 );
+DELETE FROM discoveries WHERE game = 'wild-pond';
