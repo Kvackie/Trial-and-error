@@ -1,10 +1,10 @@
 {
   "name": "Hex Hold",
-  "description": "Build a town on a hex island, gather and trade resources, train heroes, raid dungeons and hold out against night-time monster waves.",
+  "description": "Build a town on a hex island, gather and trade resources, train heroes, raid dungeons, raise wonders and hold out against monster waves from growing nests.",
   "appId": "io.github.kvackie.trialanderror.hexhold",
   "icon": "icon.svg",
   "sv": {
     "name": "Hexfästet",
-    "description": "Bygg en stad på en hexagonö, samla och byt resurser, träna hjältar, plundra grottor och stå emot monstervågor om natten."
+    "description": "Bygg en stad på en hexagonö, samla och byt resurser, träna hjältar, plundra grottor, bygg underverk och stå emot monstervågor från växande bon."
   }
 }

@@ -88,14 +88,14 @@ export const waveStrength = (n) => 1.05 ** (n - 1);
 // has grown; with no nest left, waves are smaller and come from the sea, until a new
 // nest takes root. Units that come near a nest are set on by its guards.
 export const NESTS = 3;
-export const NEST_MIN_DISTANCE = 5; // from the castle
+export const NEST_MIN_DISTANCE = 6; // from the castle
 export const NEST_MAX_LEVEL = 5;
-export const NEST_GROW = 8 * 60; // seconds of play for a nest to grow a level
+export const NEST_GROW = 10 * 60; // seconds of play for a nest to grow a level
 export const NEST_RESPAWN = 12 * 60; // a new nest takes root this long after one is destroyed
-export const NEST_GUARD_EVERY = 20;
-export const nestHp = (level) => 250 + 250 * level;
+export const NEST_GUARD_EVERY = 15;
+export const nestHp = (level) => 600 + 500 * level;
 export const nestLoot = (level) => ({ gold: 80 * level, stone: 60 * level, wood: 60 * level });
-export const nestExtra = (level) => Array(level - 1).fill('spirit').concat(Array(Math.floor(level / 3)).fill('golem'));
+export const nestExtra = (level) => Array(level - 1).fill('spirit').concat(Array(Math.max(0, Math.floor((level - 2) / 2))).fill('golem'));
 export const NO_NEST_SHARE = 0.6; // share of the usual wave when no nest is left
 
 // Dungeons: send a party; after a while they come back with loot, or not everyone does.

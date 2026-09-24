@@ -621,16 +621,16 @@ function nestsTick(state, dt, events) {
     const near = state.units.filter((u) => u.state !== 'away' && hexDist(u, nest) <= 3);
     if (!near.length) {
       nest.hp = Math.min(nest.maxHp, nest.hp + 2 * dt);
-      nest.guard = Math.min(nest.guard, 5);
+      nest.guard = Math.min(nest.guard, 3);
       continue;
     }
     nest.guard -= dt;
     const guards = state.monsters.filter((m) => m.guard === nest.id).length;
-    if (nest.guard <= 0 && guards < 2 + nest.level) {
+    if (nest.guard <= 0 && guards < 2 + 2 * nest.level) {
       nest.guard = NEST_GUARD_EVERY;
       const strength = waveStrength(Math.max(1, state.wave.number));
       const spots = neighbours(nest.q, nest.r).filter(([q, r]) => canMonsterStand(state, q, r));
-      for (let i = 0; i < 1 + Math.floor(nest.level / 2); i++) {
+      for (let i = 0; i < 1 + nest.level; i++) {
         if (spots.length) addMonster(state, i % 2 ? 'spirit' : 'slime', spots[i % spots.length], strength, { guard: nest.id });
       }
       events.push({ type: 'guards', nest });

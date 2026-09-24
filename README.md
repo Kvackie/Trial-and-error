@@ -16,7 +16,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
 | Wild Pond (Vilda dammen) | `games/wild-pond/` | Breed drawn-in-code pond creatures to discover rare features, and trade them with other players through a shared online pond. |
 | Potion Market (Trolldrycksmarknaden) | `games/potion-market/` | Brew potions by balancing five essences (art and recipes from Eternal Alchemy) and sell them on a market shared by every player. |
-| Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town and hold out against night-time monster waves and titans. Real time; the town keeps producing for up to 8 hours while closed. |
+| Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
 
 Every 2D game has the same frame around it (3D games choose their own, see [Add a 3D game](#add-a-3d-game)):
 
@@ -127,7 +127,8 @@ languages and sounds, and draws its own HTML header and panels over the 3D view.
   and re-run it to use another model.
 - **Balance:** `node games/hex-hold/tools/balance.mjs [minutes] [islands] [balanced|economy|idle]`
   plays the game at high speed with a scripted player and reports how resources grow, how each wave
-  goes and how dungeons turn out. Re-run it after changing numbers in `src/data.js`.
+  goes, how dungeons turn out, and when nests fall and wonders go up. Re-run it after changing numbers in
+  `src/data.js`.
 - **Old saves:** islands are rebuilt from their seed when loaded, so a change to the island generator
   must keep old islands the same: bump `WORLD_VERSION` in `src/world.js` and keep the old path for
   saves made before it (rivers and islets came in version 2).

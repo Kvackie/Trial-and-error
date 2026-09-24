@@ -6,7 +6,7 @@
 // balanced: builds up and keeps an army (roughly how a player would play)
 // economy:  only builds the economy, no army or towers (how hard the waves punish that)
 // idle:     builds nothing at all after the start
-import { BUILDINGS, RESOURCES, UNITS, upgradeCost } from '../src/data.js';
+import { BUILDINGS, GOALS, RESOURCES, upgradeCost } from '../src/data.js';
 import { distance } from '../src/hex.js';
 import * as sim from '../src/sim.js';
 
@@ -28,7 +28,8 @@ function tryBuild(state, type) {
 }
 
 const count = (state, type) => state.buildings.filter((b) => b.type === type).length;
-const busy = (state) => state.buildings.some((b) => b.state === 'building');
+// Every builder has work already.
+const busy = (state) => sim.constructionJobs(state).length >= sim.builders(state);
 
 // One decision every couple of seconds, like a player tapping around.
 function decide(state, log) {
@@ -67,6 +68,8 @@ function decide(state, log) {
       }
     }
   }
+  // Wonders once the castle allows them.
+  if (!busy(state)) for (const type of ['wishingwell', 'beacon', 'cathedral', 'bazaar']) if (count(state, type) === 0 && tryBuild(state, type)) return log(type);
   // Castle upgrade when storage is the limit.
   const castle = sim.castle(state);
   if (RESOURCES.some((r) => state.res[r] >= sim.storage(state) * 0.95) && castle.level < 3 && sim.upgrade(state, castle)) return log('castle+');
@@ -82,6 +85,13 @@ function decide(state, log) {
     }
     const smith = state.buildings.find((b) => b.type === 'blacksmith' && b.state === 'ready');
     if (smith) for (const track of ['weapons', 'armour']) if (sim.startResearch(state, smith, track)) return log(`research ${track}`);
+    // Nests: take the army to a nest that's been found, between waves, once it's big enough.
+    const idleArmy = state.units.filter((u) => u.state !== 'away');
+    const nest = state.nests.find((n) => state.revealed.has(`${n.q},${n.r}`));
+    if (nest && !sim.waveOn(state) && state.wave.next > 90 && idleArmy.length >= 8 && !idleArmy.some((u) => u.order)) {
+      sim.moveUnits(state, idleArmy.map((u) => u.id), nest.q, nest.r);
+      return log('attack nest');
+    }
     // Dungeons: send spare units when the odds are good, keeping some at home.
     const idle = state.units.filter((u) => u.state === 'idle');
     const dungeon = state.dungeons.find((d) => d.state === 'ready' && state.revealed.has(d.key));
@@ -114,7 +124,7 @@ function play(seed) {
     const events = sim.tick(state, STEP);
     for (const e of events) {
       if (e.type === 'wave') {
-        wave = { n: e.number, monsters: state.monsters.length, lostBuildings: 0, lostUnits: 0, start: state.time };
+        wave = { n: e.number, monsters: state.monsters.filter((m) => !m.guard).length, lostBuildings: 0, lostUnits: 0, start: state.time };
         // Like a player would: send the army to meet the wave (after a short reaction time).
         if (style === 'balanced') state.pendingMarch = { at: e.at, in: 5 };
       }
@@ -122,7 +132,8 @@ function play(seed) {
       if (e.type === 'unitDied' && wave) wave.lostUnits++;
       if (e.type === 'dungeon') report.dungeons[e.won ? 'won' : 'lost']++;
     }
-    if (wave && !state.monsters.length) {
+    for (const e of events) if (e.type === 'nestDestroyed') log(`nest destroyed ${(report.nests = (report.nests ?? 0) + 1)}`);
+    if (wave && !sim.waveOn(state)) {
       wave.seconds = Math.round(state.time - wave.start);
       report.waves.push(wave);
       wave = null;
@@ -183,4 +194,4 @@ for (let n = 1; n <= maxWave; n++) {
 }
 console.log(`\nDungeons: ${reports.reduce((a, r) => a + r.dungeons.won, 0)} won, ${reports.reduce((a, r) => a + r.dungeons.lost, 0)} lost`);
 console.log(`Stuck with full storage: ${avg(reports.map((r) => r.stuck))} s per game`);
-console.log(`End: buildings ${avg(reports.map((r) => r.final.buildings))}, destroyed ${avg(reports.map((r) => r.final.destroyed))}, units ${avg(reports.map((r) => r.final.units))}, goals ${avg(reports.map((r) => r.final.goals))}/14, hero levels ${JSON.stringify(reports.flatMap((r) => r.levels).reduce((m, l) => ((m[l] = (m[l] ?? 0) + 1), m), {}))}`);
+console.log(`End: buildings ${avg(reports.map((r) => r.final.buildings))}, destroyed ${avg(reports.map((r) => r.final.destroyed))}, units ${avg(reports.map((r) => r.final.units))}, goals ${avg(reports.map((r) => r.final.goals))}/${GOALS.length}, nests destroyed ${avg(reports.map((r) => r.nests ?? 0))}, hero levels ${JSON.stringify(reports.flatMap((r) => r.levels).reduce((m, l) => ((m[l] = (m[l] ?? 0) + 1), m), {}))}`);
