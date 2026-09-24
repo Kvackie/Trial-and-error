@@ -12,6 +12,7 @@ const HTML = {
         <li><b>Homes</b> house people. Every workplace needs workers, and every unit counts as one person.</li>
         <li><b>Farms</b>, <b>windmills</b> and <b>watermills</b> (next to water) make food. <b>Lumber mills</b> next to forest make wood, more with more forest around. <b>Mines</b> on hills make stone. <b>Markets</b> and homes make gold.</li>
         <li>Tap a building to upgrade it (up to level 3). Upgrading the castle lets you store more.</li>
+        <li>Rivers can't be crossed or built on. Build a <b>bridge</b> over them, or out across the sea to the small islands nearby, each with forest, hills and a dungeon of its own.</li>
         <li><b>Walls</b> join up with each other and stop monsters, which have to break through if there's no way round. Your units can walk through <b>gates</b>.</li>
         <li>A <b>tavern</b> makes every home hold more people. At the <b>market</b> you can trade one resource for another.</li>
         <li><b>Goals</b> (in the bottom bar) give rewards and show what to try next.</li>
@@ -37,6 +38,7 @@ const HTML = {
         <li><b>Hem</b> ger plats åt folk. Varje arbetsplats behöver arbetare, och varje enhet räknas som en person.</li>
         <li><b>Gårdar</b>, <b>väderkvarnar</b> och <b>vattenkvarnar</b> (vid vatten) ger mat. <b>Sågverk</b> vid skog ger trä, mer ju mer skog runt omkring. <b>Gruvor</b> på kullar ger sten. <b>Marknader</b> och hem ger guld.</li>
         <li>Tryck på en byggnad för att uppgradera den (upp till nivå 3). En uppgraderad borg rymmer mer.</li>
+        <li>Floder går inte att korsa eller bygga på. Bygg en <b>bro</b> över dem, eller ut över havet till de små öarna i närheten, som var och en har skog, kullar och en egen grotta.</li>
         <li><b>Murar</b> sitter ihop med varandra och stoppar monster, som måste slå sig igenom om det inte finns någon väg runt. Dina enheter kan gå genom <b>portar</b>.</li>
         <li>En <b>krog</b> gör att varje hem rymmer fler personer. På <b>marknaden</b> kan du byta en resurs mot en annan.</li>
         <li><b>Mål</b> (i nedre raden) ger belöningar och visar vad du kan prova härnäst.</li>

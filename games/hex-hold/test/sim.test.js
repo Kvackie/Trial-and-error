@@ -28,7 +28,7 @@ test('every island has a grass start, wood and stone nearby, and three dungeons'
     const near = (terrain, d) => [...tiles.values()].some((t) => t.terrain === terrain && distance([t.q, t.r], [0, 0]) <= d);
     assert.ok(near('forest', 3), `forest ${seed}`);
     assert.ok(near('hills', 4), `hills ${seed}`);
-    assert.equal(dungeons.length, 3, `dungeons ${seed}`);
+    assert.ok(dungeons.length >= 3, `dungeons ${seed}`);
   }
 });
 
@@ -197,4 +197,24 @@ test('walls stop monsters until they break through; gates let units pass', async
   const walls = state.buildings.filter((b) => b.id >= 900);
   assert.ok(walls.some((w) => w.hp < 300) || castle.hp < 800);
   assert.ok(!walls.every((w) => w.hp === 300) , 'a wall or the gate took the hits');
+});
+
+test('new islands have rivers and islets; bridges make water walkable', async () => {
+  const { canWalk } = await import('../src/sim.js');
+  let rivers = 0;
+  for (let seed = 1; seed <= 20; seed++) {
+    const { tiles, dungeons } = generateWorld(seed);
+    if ([...tiles.values()].some((t) => t.terrain === 'river')) rivers++;
+    assert.ok([...tiles.values()].filter((t) => t.islet).length >= 14, `islets ${seed}`);
+    assert.ok(dungeons.length >= 5, `islet dungeons ${seed}`);
+  }
+  assert.ok(rivers >= 10, `rivers on ${rivers}/20`);
+  // Old saves keep their island exactly.
+  const old = generateWorld(3, 1);
+  assert.ok(![...old.tiles.values()].some((t) => t.islet || t.terrain === 'river'));
+  const state = newGame(6);
+  const water = [...state.tiles.values()].find((t) => t.terrain === 'water' && distance([t.q, t.r], [0, 0]) <= 9);
+  assert.equal(canWalk(state, water.q, water.r), false);
+  state.buildings.push({ id: 990, type: 'bridge', q: water.q, r: water.r, level: 1, hp: 200, state: 'ready', left: 0, queue: [] });
+  assert.equal(canWalk(state, water.q, water.r), true);
 });

@@ -52,6 +52,20 @@ function buildWall(b, mask) {
   return group;
 }
 
+// A bridge points at the land or bridge it joins.
+function bridgeAngle(state, b) {
+  const { x, z } = toWorld(b.q, b.r);
+  for (const [dq, dr] of DIRS) {
+    const tile = state.tiles.get(key(b.q + dq, b.r + dr));
+    const other = state.buildings.find((o) => o.q === b.q + dq && o.r === b.r + dr);
+    if ((tile && !['water', 'river', 'mountain'].includes(tile.terrain)) || (other && BUILDINGS[other.type].bridge)) {
+      const to = toWorld(b.q + dq, b.r + dr);
+      return Math.atan2(to.x - x, to.z - z);
+    }
+  }
+  return 0;
+}
+
 function modelName(b) {
   if (b.state === 'destroyed') return 'building_destroyed';
   if (b.state === 'building') return 'building_scaffolding';
@@ -78,7 +92,8 @@ export class Town {
         const { x, z } = toWorld(b.q, b.r);
         group.position.set(x, tileTop(state.tiles.get(key(b.q, b.r))), z);
         const body = isWall ? buildWall(b, wallMask(state, b)) : model(name);
-        if (!isWall) body.rotation.y = ((b.id * 7) % 6) * (Math.PI / 3);
+        if (BUILDINGS[b.type].bridge && b.state !== 'destroyed') body.rotation.y = bridgeAngle(state, b);
+        else if (!isWall) body.rotation.y = ((b.id * 7) % 6) * (Math.PI / 3);
         group.add(body);
         // A flag per level above the first.
         for (let i = 1; i < b.level; i++) {

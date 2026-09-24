@@ -9,7 +9,7 @@ import { onLangChange } from '../../../shared/i18n.js';
 import { playSound } from '../../../shared/sound.js';
 import { BUILDINGS, UNITS } from './data.js';
 import { SIZE, fromWorld, key, toWorld } from './hex.js';
-import { LEVEL_HEIGHT, MAX_LEVEL, isPassable, tileTop } from './world.js';
+import { LEVEL_HEIGHT, MAX_LEVEL, tileTop } from './world.js';
 import * as sim from './sim.js';
 import { THEME, openHelp } from './help.js';
 import { tr } from './strings.js';
@@ -58,7 +58,7 @@ controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
 controls.addEventListener('change', () => {
   // Keep the view over the island.
   const t = controls.target;
-  const limit = 22;
+  const limit = 30;
   const len = Math.hypot(t.x, t.z);
   if (len > limit) {
     const back = new THREE.Vector3(t.x, 0, t.z).multiplyScalar(limit / len - 1);
@@ -304,7 +304,7 @@ function tap(x, y) {
     playSound('click');
     return refresh();
   }
-  if (selection?.kind === 'units' && known && isPassable(tile)) {
+  if (selection?.kind === 'units' && known && sim.canWalk(state, q, r)) {
     if (sim.moveUnits(state, selection.ids, q, r)) {
       const { x: fx, z: fz } = toWorld(q, r);
       flag.position.set(fx, 0.6, fz);
@@ -317,7 +317,7 @@ function tap(x, y) {
   }
   if (building) selection = { kind: 'building', id: building.id };
   else if (dungeon) selection = { kind: 'dungeon', key: dungeon.key };
-  else if (known && tile.terrain !== 'water') selection = { kind: 'tile', q, r };
+  else if (known) selection = { kind: 'tile', q, r };
   else selection = null;
   playSound('click');
   refresh();

@@ -28,8 +28,12 @@ function noise(hexes, rng, passes = 2) {
   return values;
 }
 
-// tiles: Map "q,r" -> { q, r, terrain: water | grass | forest | hills | mountain, dungeon? }
-export function generateWorld(seed) {
+// tiles: Map "q,r" -> { q, r, terrain: water | grass | forest | hills | mountain | river, level, dungeon? }
+// version 1 islands (older saves) have no rivers or islets; the main island is the same.
+export const WORLD_VERSION = 2;
+export const OUTER_RADIUS = 14;
+
+export function generateWorld(seed, version = WORLD_VERSION) {
   const rng = seeded(seed);
   const hexes = spiral(0, 0, RADIUS);
   const shape = noise(hexes, rng, 2);
@@ -80,8 +84,67 @@ export function generateWorld(seed) {
       dungeons.push(t);
     }
   }
+  if (version >= 2) addIslets(tiles, dungeons, seeded(seed + 7919));
   assignHeights(tiles, height);
+  if (version >= 2) addRivers(tiles, seeded(seed + 104729));
   return { tiles, dungeons: dungeons.map((t) => key(t.q, t.r)) };
+}
+
+// Small islands out at sea, each a short bridge away (two water hexes) from the main
+// island, with fresh forest and hills and a dungeon of their own.
+function addIslets(tiles, dungeons, rng) {
+  for (const [q, r] of spiral(0, 0, OUTER_RADIUS)) if (!tiles.has(key(q, r))) tiles.set(key(q, r), { q, r, terrain: 'water' });
+  const directions = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+  const start = Math.floor(rng() * 6);
+  for (let n = 0; n < 3; n++) {
+    const [dq, dr] = directions[(start + n * 2) % 6];
+    // Walk out from the castle to the last land hex in this direction.
+    let edge = 0;
+    for (let i = 1; i <= RADIUS; i++) if (tiles.get(key(dq * i, dr * i))?.terrain !== 'water') edge = i;
+    const cq = dq * (edge + 4);
+    const cr = dr * (edge + 4);
+    for (const [q, r] of spiral(cq, cr, 1)) {
+      const tile = tiles.get(key(q, r));
+      if (!tile) continue;
+      const roll = rng();
+      tile.terrain = roll < 0.45 ? 'forest' : roll < 0.75 ? 'hills' : 'grass';
+      tile.islet = true;
+    }
+    const centre = tiles.get(key(cq, cr));
+    if (centre) {
+      centre.terrain = 'grass';
+      centre.dungeon = true;
+      dungeons.push(centre);
+    }
+  }
+}
+
+// Rivers run from high ground down to the sea. They can't be walked or built on,
+// except with a bridge, and count as water for watermills.
+function addRivers(tiles, rng) {
+  const main = [...tiles.values()].filter((t) => !t.islet && t.terrain !== 'water' && !t.dungeon);
+  const sources = main.filter((t) => t.level >= 2 && distance([t.q, t.r], [0, 0]) >= 3).sort(() => rng() - 0.5);
+  let made = 0;
+  for (const source of sources) {
+    if (made >= 2) break;
+    const path = [source];
+    let at = source;
+    for (let i = 0; i < 20; i++) {
+      const next = neighbours(at.q, at.r)
+        .map(([q, r]) => tiles.get(key(q, r)))
+        .filter((t) => t && !path.includes(t) && !t.dungeon && distance([t.q, t.r], [0, 0]) >= 2 && t.level <= at.level)
+        .sort((a, b) => a.level - b.level || distance([b.q, b.r], [0, 0]) - distance([a.q, a.r], [0, 0]))[0];
+      if (!next) break;
+      if (next.terrain === 'water') {
+        // Reached the sea: this river is kept.
+        for (const t of path) t.terrain = 'river';
+        made++;
+        break;
+      }
+      path.push(next);
+      at = next;
+    }
+  }
 }
 
 // Land rises in steps from the beach: every hex gets a level (0 = beach height) that
@@ -94,7 +157,7 @@ function assignHeights(tiles, noiseMap) {
   const land = [...tiles.values()].filter((t) => t.terrain !== 'water');
   for (const t of land) {
     const k = key(t.q, t.r);
-    let level = Math.round((noiseMap.get(k) - 0.5) * 16 + 1.8);
+    let level = Math.round(((noiseMap.get(k) ?? 0.45) - 0.5) * 16 + 1.8);
     if (t.terrain === 'hills') level += 1;
     if (t.terrain === 'mountain') level += 2;
     t.level = Math.max(0, Math.min(MAX_LEVEL, level));
@@ -113,4 +176,5 @@ function assignHeights(tiles, noiseMap) {
 export const tileTop = (tile) => (!tile || tile.terrain === 'water' ? -0.2 : tile.level * LEVEL_HEIGHT);
 
 export const isLand = (tile) => tile && tile.terrain !== 'water';
-export const isPassable = (tile) => tile && tile.terrain !== 'water' && tile.terrain !== 'mountain';
+export const isPassable = (tile) => tile && tile.terrain !== 'water' && tile.terrain !== 'mountain' && tile.terrain !== 'river';
+export const isWet = (tile) => tile && (tile.terrain === 'water' || tile.terrain === 'river');

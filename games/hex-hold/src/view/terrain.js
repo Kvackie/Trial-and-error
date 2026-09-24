@@ -1,7 +1,7 @@
 // The island: tiles, nature on them, dungeon doorways and the dark over unexplored hexes.
 // Everything that repeats is drawn with instancing, so hundreds of hexes stay cheap.
 import * as THREE from 'three';
-import { SIZE, key, toWorld } from '../hex.js';
+import { DIRS, SIZE, key, toWorld } from '../hex.js';
 import { tileTop } from '../world.js';
 import { buildingAt } from '../sim.js';
 import { source } from './assets.js';
@@ -36,8 +36,11 @@ function instanced(name, matrices, material) {
   return group;
 }
 
-const place = (x, y, z, rotation = 0, scale = 1, height = scale) =>
-  new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation), new THREE.Vector3(scale, height, scale));
+const place = (x, y, z, rotation = 0, scale = 1, height = scale, run = false) => {
+  const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation), new THREE.Vector3(scale, height, scale));
+  m.run = run;
+  return m;
+};
 
 export class Terrain {
   constructor(scene) {
@@ -54,6 +57,9 @@ export class Terrain {
     // stretched down to the floor for each hex.
     this.cliffGeometry = new THREE.CylinderGeometry(SIZE * 0.995, SIZE * 0.995, 1, 6).translate(0, -0.5, 0);
     this.cliffMaterial = new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 1, flatShading: true });
+    this.riverMaterial = new THREE.MeshStandardMaterial({ color: 0x3aa6d8, roughness: 0.25, metalness: 0.1 });
+    this.poolGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.03, 16);
+    this.runGeometry = new THREE.BoxGeometry(0.8, 0.03, 1.05).translate(0, 0, 0.52);
   }
 
   // Rebuilds everything. Called when the fog lifts or a building goes up.
@@ -66,6 +72,7 @@ export class Terrain {
     const add = (name, matrix) => (byModel.get(name) ?? byModel.set(name, []).get(name)).push(matrix);
     const hidden = [];
     const cliffs = [];
+    const channels = [];
     for (const tile of state.tiles.values()) {
       const k = key(tile.q, tile.r);
       const { x, z } = toWorld(tile.q, tile.r);
@@ -84,6 +91,16 @@ export class Terrain {
         add('hex_grass', place(x, top, z, 0, 1, GRASS_DEPTH));
         cliffs.push(place(x, top - GRASS_DEPTH, z, 0, 1, top - GRASS_DEPTH + 1));
       }
+      if (tile.terrain === 'river') {
+        // A channel from the middle of the hex towards each river or sea neighbour.
+        channels.push(place(x, top + 0.005, z));
+        for (const [dq, dr] of DIRS) {
+          const n = state.tiles.get(key(tile.q + dq, tile.r + dr));
+          if (!n || (n.terrain !== 'river' && n.terrain !== 'water')) continue;
+          const to = toWorld(tile.q + dq, tile.r + dr);
+          channels.push(place(x, top + 0.005, z, Math.atan2(to.x - x, to.z - z), 1, 1, true));
+        }
+      }
       if (buildingAt(state, tile.q, tile.r)) continue;
       if (tile.dungeon) {
         this.dungeon(add, x, z, top);
@@ -100,9 +117,23 @@ export class Terrain {
     }
     for (const [name, matrices] of byModel) this.group.add(instanced(name, matrices, name === 'hex_grass' ? this.grassMaterial() : undefined));
     this.group.add(instanced('hex_grass', hidden, this.fogMaterial));
+    this.addChannels(channels);
     if (cliffs.length) {
       const mesh = new THREE.InstancedMesh(this.cliffGeometry, this.cliffMaterial, cliffs.length);
       cliffs.forEach((m, i) => mesh.setMatrixAt(i, m));
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    }
+  }
+
+  // River water: round pools in the middle of river hexes joined by straight runs.
+  addChannels(list) {
+    const pools = list.filter((m) => !m.run);
+    const runs = list.filter((m) => m.run);
+    for (const [geometry, matrices] of [[this.poolGeometry, pools], [this.runGeometry, runs]]) {
+      if (!matrices.length) continue;
+      const mesh = new THREE.InstancedMesh(geometry, this.riverMaterial, matrices.length);
+      matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
       mesh.receiveShadow = true;
       this.group.add(mesh);
     }

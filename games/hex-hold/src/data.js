@@ -27,9 +27,11 @@ export const BUILDINGS = {
   // break through when there's no way round); units walk through gates.
   wall: { model: 'wall_straight', cost: { stone: 12 }, time: 4, hp: 300, wall: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
   gate: { model: 'wall_straight_gate', cost: { wood: 20, stone: 20 }, time: 8, hp: 350, wall: true, gate: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
+  // Bridges go on water or river next to land (or another bridge) and can be walked over.
+  bridge: { model: 'building_bridge_A', cost: { wood: 40, stone: 10 }, time: 15, hp: 200, fixed: true, bridge: true, terrain: ['water', 'river'] },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'bridge', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 

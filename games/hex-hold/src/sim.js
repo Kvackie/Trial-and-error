@@ -40,7 +40,7 @@ import {
   waveStrength,
 } from './data.js';
 import { distance, findPath, fromWorld, key, neighbours, parse, spiral, toWorld } from './hex.js';
-import { generateWorld, isPassable, seeded } from './world.js';
+import { RADIUS, WORLD_VERSION, generateWorld, isPassable, isWet, seeded } from './world.js';
 
 // --- Creating, saving and loading ----------------------------------------------------
 
@@ -48,6 +48,7 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
   const { tiles, dungeons } = generateWorld(seed);
   const state = {
     version: 1,
+    worldVersion: WORLD_VERSION,
     seed,
     time: 0, // seconds played (drives the waves)
     savedAt: Date.now(),
@@ -85,7 +86,7 @@ export function serialise(state) {
 
 export function deserialise(text) {
   const saved = JSON.parse(text);
-  const { tiles } = generateWorld(saved.seed);
+  const { tiles } = generateWorld(saved.seed, saved.worldVersion ?? 1);
   for (const k of saved.cleared ?? []) {
     const tile = tiles.get(k);
     if (tile) Object.assign(tile, { terrain: 'grass', cleared: true });
@@ -215,13 +216,23 @@ export function buildProblem(state, type, q, r) {
   const def = BUILDINGS[type];
   const tile = tileAt(state, q, r);
   if (!tile || !state.revealed.has(key(q, r))) return 'hidden';
-  if (!isPassable(tile) || tile.dungeon || buildingAt(state, q, r)) return 'occupied';
+  if (def.bridge) {
+    if (buildingAt(state, q, r)) return 'occupied';
+    if (!isWet(tile)) return 'terrain_bridge';
+    const joins = neighbours(q, r).some(([nq, nr]) => {
+      const n = tileAt(state, nq, nr);
+      const other = buildingAt(state, nq, nr);
+      return (n && isPassable(n)) || (other && BUILDINGS[other.type].bridge);
+    });
+    if (!joins) return 'bridgeLand';
+  } else if (!isPassable(tile) || tile.dungeon || buildingAt(state, q, r)) return 'occupied';
   // Walls can go a little further out, but don't stretch the town themselves.
   const reach = def.wall ? BUILD_RANGE + 1 : BUILD_RANGE;
   if (!state.buildings.some((b) => !BUILDINGS[b.type].wall && distance([b.q, b.r], [q, r]) <= reach)) return 'tooFar';
   const terrain = def.terrain ?? DEFAULT_TERRAIN;
   if (!terrain.includes(tile.terrain)) return `terrain_${type}`;
-  if (def.near && !neighbours(q, r).some(([nq, nr]) => tileAt(state, nq, nr)?.terrain === def.near)) return `near_${def.near}`;
+  const isNear = (t) => t && (t.terrain === def.near || (def.near === 'water' && isWet(t)));
+  if (def.near && !neighbours(q, r).some(([nq, nr]) => isNear(tileAt(state, nq, nr)))) return `near_${def.near}`;
   if (def.workers) {
     const { cap, used } = population(state);
     if (used + def.workers > cap) return 'noWorkers';
@@ -294,14 +305,17 @@ export function train(state, b, unit) {
 
 // Walls block monsters and units; gates only block monsters. Ruined walls block nobody.
 const passCost = (state, monster = false) => (q, r) => {
-  if (!isPassable(tileAt(state, q, r))) return Infinity;
   const b = buildingAt(state, q, r);
+  if (b && BUILDINGS[b.type].bridge) return b.state === 'ready' ? 1 : Infinity;
+  if (!isPassable(tileAt(state, q, r))) return Infinity;
   const def = b && b.state !== 'destroyed' && BUILDINGS[b.type];
   if (def?.wall && (monster || !def.gate)) return Infinity;
   return 1;
 };
 
 // Orders units to walk to a hex (they fight whatever they meet on the way).
+export const canWalk = (state, q, r) => Number.isFinite(passCost(state)(q, r));
+
 export function moveUnits(state, ids, q, r) {
   let moved = 0;
   const targets = [[q, r], ...spiral(q, r, 2).filter(([a, b]) => a !== q || b !== r)];
@@ -309,7 +323,7 @@ export function moveUnits(state, ids, q, r) {
     const u = state.units.find((x) => x.id === id);
     if (!u || u.state === 'away') return;
     const goal = targets[i % targets.length];
-    if (!isPassable(tileAt(state, ...goal))) return;
+    if (!Number.isFinite(passCost(state)(...goal))) return;
     const path = findPath(fromWorld(u.x, u.z), goal, passCost(state));
     if (path) {
       u.path = path;
@@ -460,7 +474,7 @@ function spawnWave(state, events) {
   state.wave.number++;
   const n = state.wave.number;
   const shore = [...state.tiles.values()].filter(
-    (t) => isPassable(t) && !t.dungeon && !buildingAt(state, t.q, t.r) && distance([t.q, t.r], [0, 0]) >= 4 && neighbours(t.q, t.r).some(([q, r]) => tileAt(state, q, r)?.terrain === 'water' || !tileAt(state, q, r)),
+    (t) => isPassable(t) && !t.islet && distance([t.q, t.r], [0, 0]) < RADIUS && !t.dungeon && !buildingAt(state, t.q, t.r) && distance([t.q, t.r], [0, 0]) >= 4 && neighbours(t.q, t.r).some(([q, r]) => tileAt(state, q, r)?.terrain === 'water' || !tileAt(state, q, r)),
   );
   const home = castle(state);
   shore.sort((a, b) => distance([b.q, b.r], [home.q, home.r]) - distance([a.q, a.r], [home.q, home.r]));
