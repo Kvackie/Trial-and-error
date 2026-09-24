@@ -317,7 +317,8 @@ function addBuilding(state, type, q, r, { ready = false } = {}) {
   return b;
 }
 
-export function build(state, type, q, r) {
+// rot: which way it faces, in sixths of a turn (0-5).
+export function build(state, type, q, r, rot = null) {
   if (buildProblem(state, type, q, r)) return null;
   pay(state, BUILDINGS[type].cost);
   const tile = tileAt(state, q, r);
@@ -325,7 +326,16 @@ export function build(state, type, q, r) {
     tile.terrain = 'grass';
     tile.cleared = true;
   }
-  return addBuilding(state, type, q, r);
+  const b = addBuilding(state, type, q, r);
+  if (rot !== null) b.rot = ((rot % 6) + 6) % 6;
+  return b;
+}
+
+// Turns a building a sixth of a turn (free; walls, gates and bridges line up by themselves).
+export function rotate(state, b) {
+  if (!b || BUILDINGS[b.type].fixed || b.type === 'castle') return false;
+  b.rot = ((b.rot ?? (b.id * 7) % 6) + 1) % 6;
+  return true;
 }
 
 export function upgradeProblem(state, b) {

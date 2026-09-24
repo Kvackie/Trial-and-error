@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../data.js';
 import { DIRS, key, toWorld } from '../hex.js';
 import { tileTop } from '../world.js';
+import { waitingForBuilder } from '../sim.js';
 import { model } from './assets.js';
 import { HealthBar } from './bars.js';
 
@@ -19,6 +20,65 @@ const GLOW = (() => {
   ctx.fillRect(0, 0, 64, 64);
   return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
 })();
+
+// A small floating label (a build timer) drawn on its own canvas.
+class Label {
+  constructor() {
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 160;
+    this.canvas.height = 56;
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.colorSpace = THREE.SRGBColorSpace;
+    this.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.texture, depthTest: false, transparent: true }));
+    this.sprite.scale.set(0.95, 0.33, 1);
+    this.sprite.renderOrder = 12;
+    this.text = null;
+  }
+
+  set(text) {
+    if (text === this.text) return;
+    this.text = text;
+    const ctx = this.canvas.getContext('2d');
+    ctx.clearRect(0, 0, 160, 56);
+    ctx.fillStyle = 'rgba(20, 28, 40, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 152, 48, 22);
+    ctx.fill();
+    ctx.fillStyle = '#ffe9a8';
+    ctx.font = 'bold 30px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 80, 30);
+    this.texture.needsUpdate = true;
+  }
+
+  dispose() {
+    this.texture.dispose();
+    this.sprite.material.dispose();
+  }
+}
+
+const timeText = (s) => {
+  s = Math.max(0, Math.ceil(s));
+  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
+};
+
+// The highest point of a model (in its parent's space), for planting a flag on top.
+function peak(object) {
+  object.updateMatrixWorld(true);
+  const top = new THREE.Vector3(0, -Infinity, 0);
+  const v = new THREE.Vector3();
+  const inverse = new THREE.Matrix4().copy(object.parent?.matrixWorld ?? new THREE.Matrix4()).invert();
+  object.traverse((o) => {
+    if (!o.isMesh) return;
+    const position = o.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      v.fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld).applyMatrix4(inverse);
+      if (v.y > top.y) top.copy(v);
+    }
+  });
+  return top;
+}
 
 const POST = new THREE.CylinderGeometry(0.2, 0.24, 1.25, 8);
 const STONE = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.9, flatShading: true });
@@ -100,15 +160,25 @@ export class Town {
       let view = this.views.get(b.id);
       const isWall = BUILDINGS[b.type].wall && b.state !== 'destroyed' && b.state !== 'building';
       const name = isWall ? `wall:${b.type}:${wallMask(state, b)}` : modelName(b);
-      if (!view || view.name !== name || view.level !== b.level) {
-        if (view) this.scene.remove(view.group);
+      if (!view || view.name !== name || view.level !== b.level || view.rot !== b.rot) {
+        if (view) {
+          this.scene.remove(view.group);
+          view.label?.dispose();
+        }
         const group = new THREE.Group();
         const { x, z } = toWorld(b.q, b.r);
         group.position.set(x, tileTop(state.tiles.get(key(b.q, b.r))), z);
         const body = isWall ? buildWall(b, wallMask(state, b)) : model(name);
         if (BUILDINGS[b.type].bridge && b.state !== 'destroyed') body.rotation.y = bridgeAngle(state, b);
-        else if (!isWall) body.rotation.y = ((b.id * 7) % 6) * (Math.PI / 3);
+        else if (!isWall) body.rotation.y = (b.rot ?? (b.id * 7) % 6) * (Math.PI / 3);
         group.add(body);
+        // Mines look much like the hills they stand on: a flag on top shows they're built.
+        if (b.type === 'mine' && b.state !== 'destroyed' && b.state !== 'building') {
+          const flag = model('flag_blue');
+          flag.position.copy(peak(body)).y -= 0.08;
+          flag.scale.setScalar(2.4);
+          group.add(flag);
+        }
         // A flag per level above the first.
         for (let i = 1; i < b.level; i++) {
           const flag = model('flag_blue');
@@ -119,7 +189,7 @@ export class Town {
         bar.group.position.y = b.type === 'castle' ? 4.3 : BUILDINGS[b.type].wonder ? 3.2 : 2;
         group.add(bar.group);
         this.scene.add(group);
-        view = { group, name, level: b.level, bar, bounce: view ? 0.35 : 0 };
+        view = { group, name, level: b.level, rot: b.rot, bar, bounce: view && view.rot === b.rot ? 0.35 : 0 };
         this.views.set(b.id, view);
       }
       // Warm light from windows and torches after dark.
@@ -133,6 +203,19 @@ export class Town {
         view.glow.visible = night > 0.2 && b.state === 'ready';
         view.glow.material.opacity = Math.min(0.9, night) * (0.85 + Math.sin(now * 3 + b.id) * 0.08);
       }
+      // Time left while building or upgrading (or a wait for a builder).
+      const busy = b.state === 'building' || b.state === 'upgrading';
+      if (busy && !view.label) {
+        view.label = new Label();
+        view.group.add(view.label.sprite);
+      }
+      if (view.label) {
+        view.label.sprite.visible = busy;
+        if (busy) {
+          view.label.sprite.position.y = b.state === 'building' ? 1.45 : b.type === 'castle' ? 4.7 : BUILDINGS[b.type].wonder ? 3.6 : 2.3;
+          view.label.set(waitingForBuilder(state, b) ? '⏳' : timeText(b.left));
+        }
+      }
       const max = BUILDINGS[b.type].hp * b.level;
       view.bar.set(b.state === 'destroyed' || b.state === 'building' ? 1 : b.hp / max, camera);
       // A little bounce when a building changes.
@@ -144,6 +227,7 @@ export class Town {
     for (const [id, view] of this.views) {
       if (!alive.has(id)) {
         this.scene.remove(view.group);
+        view.label?.dispose();
         this.views.delete(id);
       }
     }

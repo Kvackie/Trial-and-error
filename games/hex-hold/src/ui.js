@@ -85,7 +85,10 @@ export class UI {
   updatePanel(state, selection) {
     let html;
     if (!selection) html = this.idle(state);
-    else if (selection.kind === 'tile') html = this.buildMenu(state, selection);
+    else if (selection.kind === 'tile') {
+      this.tileKey = `${selection.q},${selection.r}`;
+      html = this.buildMenu(state, selection);
+    }
     else if (selection.kind === 'building') html = this.buildingPanel(state, state.buildings.find((b) => b.id === selection.id));
     else if (selection.kind === 'units') html = this.unitsPanel(state, selection.ids);
     else if (selection.kind === 'dungeon') html = this.dungeonPanel(state, state.dungeons.find((d) => d.key === selection.key));
@@ -115,18 +118,43 @@ export class UI {
   }
 
   buildMenu(state, { q, r }) {
+    // A building picked from the menu: show what it does before building it.
+    if (this.pick && this.pick.key === `${q},${r}`) return this.buildDetail(state, this.pick.type, q, r);
+    this.pick = null;
     const suggest = tutorialStep(state)?.suggest;
     const order = suggest ? [suggest, ...BUILD_ORDER.filter((t) => t !== suggest)] : BUILD_ORDER;
     const cards = order.map((type) => {
       const problem = buildProblem(state, type, q, r);
       const hard = problem && problem !== 'noResources';
-      return `<button class="card ${problem ? 'off' : ''} ${hard ? 'hard' : ''} ${tutorialStep(state)?.suggest === type ? 'suggest' : ''}" data-act="build" data-type="${type}" data-problem="${problem ?? ''}">
+      return `<button class="card ${problem ? 'off' : ''} ${hard ? 'hard' : ''} ${tutorialStep(state)?.suggest === type ? 'suggest' : ''}" data-act="pick-building" data-type="${type}">
         <img src="${this.thumbs[`b_${type}`] ?? ''}" alt=""><b>${esc(tr(`b_${type}`))}</b><span class="costs">${costHtml(BUILDINGS[type].cost, state)}</span></button>`;
     }).join('');
     const tile = state.tiles.get(`${q},${r}`);
     const anyPossible = BUILD_ORDER.some((type) => !['hidden', 'occupied', 'tooFar'].includes(buildProblem(state, type, q, r)));
     if (!tile || !anyPossible) return this.head(esc(tr('build'))) + `<p class="hint">${esc(tr(buildProblem(state, 'home', q, r) ?? 'nothingHere'))}</p>`;
     return this.head(esc(tr('build'))) + `<div class="cards">${cards}</div>`;
+  }
+
+  // One building's details, with Turn and Build buttons.
+  buildDetail(state, type, q, r) {
+    const def = BUILDINGS[type];
+    const problem = buildProblem(state, type, q, r);
+    const lines = [tr(def.wonder ? `wonder_${type}` : `desc_${type}`)];
+    if (def.produce) {
+      const list = Object.entries(def.produce).map(([res, v]) => `${Math.round(v * 60)} ${tr(res).toLowerCase()}`).join(', ');
+      lines.push(tr('produces', { list }) + (def.perNear ? tr('perForest') : ''));
+    }
+    if (def.pop) lines.push(tr('housing', { n: def.pop }));
+    if (def.workers) lines.push(tr('workers', { n: def.workers }));
+    if (def.attack) lines.push(tr('towerInfo', { n: def.attack.range }));
+    if (def.trains) lines.push(tr('trainsLine', { list: def.trains.map((u) => tr(`u_${u}`)).join(', ') }));
+    lines.push(tr('buildTime', { t: clock(def.time) }));
+    const turn = def.fixed ? '' : `<button class="btn" data-act="turn" aria-label="${esc(tr('turn'))}">⟳ ${esc(tr('turn'))}</button>`;
+    return this.head(esc(tr(`b_${type}`))) +
+      `<ul class="lines">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` +
+      (problem && problem !== 'noResources' ? `<p class="hint warn">${esc(tr(problem))}</p>` : '') +
+      `<div class="row"><button class="btn ghost" data-act="unpick">${esc(tr('back'))}</button>${turn}
+        <button class="btn primary ${problem ? 'off' : ''}" data-act="build" data-type="${type}" data-problem="${problem ?? ''}">${esc(tr('build'))} ${costHtml(def.cost, state)}</button></div>`;
   }
 
   buildingPanel(state, b) {
@@ -156,6 +184,10 @@ export class UI {
     if (b.state === 'destroyed') {
       const cost = repairCost(b);
       actions += `<button class="btn primary ${canAfford(state, cost) ? '' : 'off'}" data-act="repair">${esc(tr('repair'))} ${costHtml(cost, state)}</button>`;
+    }
+    if (!def.fixed && b.type !== 'castle' && b.state !== 'destroyed') actions += `<button class="btn" data-act="turn-building" aria-label="${esc(tr('turn'))}">⟳</button>`;
+    if (b.state === 'destroyed') {
+      // Only the repair button.
     } else if (def.fixed) {
       lines.push(tr(def.wonder ? `wonder_${b.type}` : def.gate ? 'gateInfo' : def.bridge ? 'bridgeInfo' : 'wallInfo'));
     } else if (b.level < 3) {
@@ -256,8 +288,23 @@ export class UI {
     switch (el.dataset.act) {
       case 'close':
         return h.onClose();
+      case 'pick-building':
+        this.pick = { type: el.dataset.type, key: this.tileKey };
+        this.lastPanel = '';
+        return h.onPick();
+      case 'unpick':
+        this.pick = null;
+        this.lastPanel = '';
+        return h.onPick();
+      case 'turn':
+        this.rot = ((this.rot ?? 0) + 1) % 6;
+        return h.onPick();
+      case 'turn-building':
+        return h.onTurnBuilding();
       case 'build':
-        return problem ? this.toast(tr(problem), 'warn') : h.onBuild(el.dataset.type);
+        if (problem) return this.toast(tr(problem), 'warn');
+        this.pick = null;
+        return h.onBuild(el.dataset.type, this.rot ?? 0);
       case 'upgrade':
         return problem ? this.toast(tr(problem), 'warn') : h.onUpgrade();
       case 'repair':

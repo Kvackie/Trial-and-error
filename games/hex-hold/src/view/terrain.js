@@ -15,6 +15,38 @@ const DECO = {
 export const FOG_COLOUR = 0x0b1522;
 const GRASS_DEPTH = 0.18; // how much of the grass tile shows above the earth
 
+// Time for the wind in the trees and the swell on the water (set every frame).
+export const TIME = { value: 0 };
+
+// A copy of a material whose instances move a little: trees sway (more towards the
+// top), water rises and falls. Cached, so every tree shares one material per source.
+const moving = new Map();
+function movingMaterial(material, kind) {
+  const k = `${kind}:${material.uuid}`;
+  if (moving.has(k)) return moving.get(k);
+  const copy = material.clone();
+  copy.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = TIME;
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
+      '#include <begin_vertex>',
+      kind === 'sway'
+        ? `#include <begin_vertex>
+           vec4 root = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+           float h = max(transformed.y, 0.0);
+           float gust = sin(uTime * 1.3 + root.x * 0.6 + root.z * 0.4) + 0.5 * sin(uTime * 2.9 + root.x * 1.7);
+           transformed.x += gust * 0.035 * h * h;
+           transformed.z += gust * 0.02 * h * h;`
+        : `#include <begin_vertex>
+           vec4 spot = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+           transformed.y += sin(uTime * 1.1 + spot.x * 0.8 + spot.z * 0.6) * 0.035 * (transformed.y + 1.0);`,
+    );
+  };
+  copy.customProgramCacheKey = () => kind;
+  moving.set(k, copy);
+  return copy;
+}
+const motionOf = (name) => (name.startsWith('tree') ? 'sway' : name === 'hex_water' || name === 'waterlily_A' ? 'swell' : null);
+
 const hash = (k) => [...k].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
 
 // Builds one InstancedMesh per mesh inside a model, placed at each of the matrices.
@@ -23,9 +55,10 @@ function instanced(name, matrices, material) {
   if (!matrices.length) return group;
   const root = source(name);
   root.updateMatrixWorld(true);
+  const motion = !material && motionOf(name);
   root.traverse((o) => {
     if (!o.isMesh) return;
-    const mesh = new THREE.InstancedMesh(o.geometry, material ?? o.material, matrices.length);
+    const mesh = new THREE.InstancedMesh(o.geometry, material ?? (motion ? movingMaterial(o.material, motion) : o.material), matrices.length);
     const local = o.matrixWorld;
     const m = new THREE.Matrix4();
     matrices.forEach((placed, i) => mesh.setMatrixAt(i, m.multiplyMatrices(placed, local)));

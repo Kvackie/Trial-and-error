@@ -16,7 +16,8 @@ import { tr } from './strings.js';
 import { UI, clock } from './ui.js';
 import { endTutorial } from './tutorial.js';
 import { hero, loadAssets, model, thumbnails } from './view/assets.js';
-import { FOG_COLOUR, Terrain } from './view/terrain.js';
+import { FOG_COLOUR, TIME, Terrain } from './view/terrain.js';
+import { Ambience } from './view/ambience.js';
 import { Town } from './view/town.js';
 import { Actors } from './view/actors.js';
 import { Sky } from './view/sky.js';
@@ -107,6 +108,7 @@ const terrain = new Terrain(scene);
 const town = new Town(scene);
 const actors = new Actors(scene);
 const villagers = new Villagers(scene);
+const ambience = new Ambience(scene);
 let sky = null; // made once the models have loaded
 
 function save() {
@@ -134,8 +136,21 @@ function load() {
 const selectedBuilding = () => selection?.kind === 'building' && state.buildings.find((b) => b.id === selection.id);
 
 const ui = new UI({
-  onBuild(type) {
-    const b = sim.build(state, type, selection.q, selection.r);
+  onPick() {
+    playSound('click');
+    // Bring the hex into view so the preview isn't hidden behind the panel.
+    if (ui.pick && selection?.kind === 'tile') {
+      const { x, z } = toWorld(selection.q, selection.r);
+      lookAt(x, z);
+    }
+    refresh();
+  },
+  onTurnBuilding() {
+    if (sim.rotate(state, selectedBuilding())) playSound('click');
+    refresh();
+  },
+  onBuild(type, rot) {
+    const b = sim.build(state, type, selection.q, selection.r, rot);
     if (b) {
       playSound('hammer');
       if (sim.waitingForBuilder(state, b)) ui.toast(tr('queued'));
@@ -243,12 +258,43 @@ const ui = new UI({
   },
 });
 
+// A see-through preview of the building picked in the build menu, on its hex.
+let ghost = null;
+function updateGhost() {
+  const pick = selection?.kind === 'tile' && ui.pick && ui.pick.key === `${selection.q},${selection.r}` ? ui.pick : null;
+  const want = pick ? `${pick.type}|${pick.key}|${ui.rot ?? 0}` : null;
+  if (ghost?.want === want) return;
+  if (ghost) {
+    scene.remove(ghost.group);
+    ghost.group.traverse((o) => o.isMesh && o.material.dispose());
+    ghost = null;
+  }
+  if (!pick) return;
+  const def = BUILDINGS[pick.type];
+  const group = new THREE.Group();
+  const body = model(def.model);
+  body.traverse((o) => {
+    if (!o.isMesh) return;
+    o.material = o.material.clone();
+    o.material.transparent = true;
+    o.material.opacity = 0.6;
+    o.castShadow = false;
+  });
+  if (!def.fixed) body.rotation.y = (ui.rot ?? 0) * (Math.PI / 3);
+  group.add(body);
+  const { x, z } = toWorld(selection.q, selection.r);
+  group.position.set(x, Math.max(0, tileTop(sim.tileAt(state, selection.q, selection.r))), z);
+  scene.add(group);
+  ghost = { group, want };
+}
+
 function refresh() {
   if (selection?.kind === 'units') selection.ids = selection.ids.filter((id) => state.units.some((u) => u.id === id && u.state !== 'away'));
   if (selection?.kind === 'units' && !selection.ids.length) selection = null;
   ui.updateTop(state);
   ui.updateTutorial(state);
   ui.updatePanel(state, selection);
+  updateGhost();
   const hex = selection?.kind === 'tile' ? [selection.q, selection.r] : selection?.kind === 'building' ? (() => {
     const b = state.buildings.find((x) => x.id === selection.id);
     return b ? [b.q, b.r] : null;
@@ -573,6 +619,8 @@ function frame() {
   sky?.update(state, dt, controls.target, camera);
   town.update(state, camera, sky?.night ?? 0, now);
   villagers.update(state, dt, sky?.night ?? 0);
+  TIME.value = now;
+  ambience.update(state, dt, now, controls.target, sky?.night ?? 0);
   actors.update(state, dt, now, camera, selection?.kind === 'units' ? selection.ids : []);
   if (flagTime > 0) {
     flagTime -= dt;
