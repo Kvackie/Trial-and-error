@@ -61,7 +61,7 @@ test('the first wave comes after ten minutes of play, and trained knights fight 
   const events = run(state, FIRST_WAVE - state.time + 1);
   assert.ok(events.some((e) => e.type === 'wave'));
   assert.equal(state.units.length, 3);
-  assert.ok(state.monsters.length >= 3);
+  assert.ok(state.monsters.length >= 2);
   const later = run(state, 120);
   assert.ok(later.some((e) => e.type === 'monsterDied'), 'monsters die');
   // Nobody is left standing between two hexes.
@@ -131,7 +131,7 @@ test('heroes level up from kills, and blacksmith research makes every unit stron
   state.units.push(u);
   const hp1 = maxHp(state, u);
   const dmg1 = damageOf(state, u);
-  u.xp = 130;
+  u.xp = 200;
   assert.equal(heroLevel(u), 3);
   assert.ok(maxHp(state, u) > hp1 && damageOf(state, u) > dmg1);
   const smith = { id: 501, type: 'blacksmith', q: 1, r: 0, level: 1, hp: 260, state: 'ready', left: 0, queue: [] };

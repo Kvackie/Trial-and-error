@@ -349,6 +349,10 @@ function react(events, now) {
         playSound('correct');
         ui.toast(tr('trained', { name: tr(`u_${e.unit.type}`).toLowerCase() }));
         break;
+      case 'hungry':
+        playSound('wrong');
+        ui.toast(tr('hungry'), 'warn');
+        break;
       case 'goal':
         playSound('discover');
         ui.toast(tr('goalDone', { name: tr(`g_${e.goal.id}`), reward: ui.lootText(e.goal.reward) }));

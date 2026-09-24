@@ -9,14 +9,14 @@ export const MAX_LEVEL = 3;
 // terrain: where it may stand. near: a terrain it needs next to it.
 // produce: resource per second at level 1 (scaled by level). workers: people it needs.
 export const BUILDINGS = {
-  castle: { model: 'building_castle_blue', hp: 800, pop: 6, reveal: 3, upgrade: { wood: 150, stone: 150 }, buildable: false },
-  home: { model: 'building_home_A_blue', model2: 'building_home_B_blue', cost: { wood: 25 }, time: 12, hp: 150, pop: 4, produce: { gold: 0.08 } },
-  farm: { model: 'building_grain', cost: { wood: 20 }, time: 12, hp: 100, workers: 1, produce: { food: 0.5 }, terrain: ['grass'] },
-  lumbermill: { model: 'building_lumbermill_blue', cost: { wood: 20 }, time: 18, hp: 180, workers: 2, produce: { wood: 0.25 }, perNear: 'forest', near: 'forest' },
+  castle: { model: 'building_castle_blue', hp: 800, pop: 6, reveal: 3, upgrade: { wood: 150, stone: 150 }, buildable: false, attack: { damage: 10, range: 3, cooldown: 1.5 } },
+  home: { model: 'building_home_A_blue', model2: 'building_home_B_blue', cost: { wood: 25 }, time: 12, hp: 150, pop: 4, produce: { gold: 0.06 } },
+  farm: { model: 'building_grain', cost: { wood: 20 }, time: 12, hp: 100, workers: 1, produce: { food: 0.4 }, terrain: ['grass'] },
+  lumbermill: { model: 'building_lumbermill_blue', cost: { wood: 20 }, time: 18, hp: 180, workers: 2, produce: { wood: 0.3 }, perNear: 'forest', near: 'forest' },
   mine: { model: 'building_mine_blue', cost: { wood: 40 }, time: 25, hp: 220, workers: 3, produce: { stone: 0.45 }, terrain: ['hills'] },
-  windmill: { model: 'building_windmill_blue', cost: { wood: 45, stone: 15 }, time: 25, hp: 180, workers: 2, produce: { food: 1.1 }, terrain: ['grass'] },
-  watermill: { model: 'building_watermill_blue', cost: { wood: 50, stone: 20 }, time: 25, hp: 180, workers: 2, produce: { food: 1.5 }, near: 'water' },
-  market: { model: 'building_market_blue', cost: { wood: 60, stone: 40 }, time: 35, hp: 200, workers: 2, produce: { gold: 0.6 } },
+  windmill: { model: 'building_windmill_blue', cost: { wood: 45, stone: 15 }, time: 25, hp: 180, workers: 2, produce: { food: 0.9 }, terrain: ['grass'] },
+  watermill: { model: 'building_watermill_blue', cost: { wood: 50, stone: 20 }, time: 25, hp: 180, workers: 2, produce: { food: 1.2 }, near: 'water' },
+  market: { model: 'building_market_blue', cost: { wood: 60, stone: 40 }, time: 35, hp: 200, workers: 2, produce: { gold: 0.45 } },
   barracks: { model: 'building_barracks_blue', cost: { wood: 80, stone: 40 }, time: 40, hp: 300, workers: 1, trains: ['knight', 'barbarian'] },
   archery: { model: 'building_archeryrange_blue', cost: { wood: 90, stone: 30 }, time: 40, hp: 260, workers: 1, trains: ['rogue', 'scout'] },
   chapel: { model: 'building_church_blue', cost: { stone: 90, gold: 60 }, time: 50, hp: 260, workers: 1, trains: ['mage'] },
@@ -29,7 +29,7 @@ export const BUILDINGS = {
   gate: { model: 'wall_straight_gate', cost: { wood: 20, stone: 20 }, time: 8, hp: 350, wall: true, gate: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
   // Bridges go on water or river next to land (or another bridge) and can be walked over.
   bridge: { model: 'building_bridge_A', cost: { wood: 40, stone: 10 }, time: 15, hp: 200, fixed: true, bridge: true, terrain: ['water', 'river'] },
-  tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
+  tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 11, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
 export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'bridge', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
@@ -37,13 +37,15 @@ export const BUILD_RANGE = 2; // new buildings go within this many hexes of an e
 
 // speed in hexes per second, range in hexes.
 export const UNITS = {
-  knight: { hp: 150, damage: 12, range: 1, speed: 1.1, cost: { food: 30, gold: 20 }, time: 20, attack: '1H_Melee_Attack_Chop', weapons: ['1H_Sword', 'Round_Shield'] },
-  barbarian: { hp: 115, damage: 18, range: 1, speed: 1.2, cost: { food: 35, gold: 25 }, time: 22, attack: '2H_Melee_Attack_Chop', weapons: ['2H_Axe'] },
-  rogue: { hp: 75, damage: 10, range: 3, speed: 1.3, cost: { food: 25, gold: 30 }, time: 20, attack: '1H_Ranged_Shoot', weapons: ['1H_Crossbow'], shoots: 'bolt' },
-  scout: { hp: 65, damage: 6, range: 1, speed: 1.9, reveal: 3, cost: { food: 20, gold: 15 }, time: 12, attack: '1H_Melee_Attack_Chop', weapons: ['Knife'] },
-  mage: { hp: 65, damage: 15, range: 3, splash: 1, speed: 1.1, cost: { food: 30, gold: 60 }, time: 30, attack: 'Spellcast_Shoot', weapons: ['2H_Staff'], shoots: 'spell' },
+  knight: { hp: 150, damage: 12, range: 1, speed: 1.1, cost: { food: 30, gold: 35 }, time: 20, attack: '1H_Melee_Attack_Chop', weapons: ['1H_Sword', 'Round_Shield'] },
+  barbarian: { hp: 115, damage: 18, range: 1, speed: 1.2, cost: { food: 35, gold: 40 }, time: 22, attack: '2H_Melee_Attack_Chop', weapons: ['2H_Axe'] },
+  rogue: { hp: 75, damage: 10, range: 3, speed: 1.3, cost: { food: 25, gold: 45 }, time: 20, attack: '1H_Ranged_Shoot', weapons: ['1H_Crossbow'], shoots: 'bolt' },
+  scout: { hp: 65, damage: 6, range: 1, speed: 1.9, reveal: 3, cost: { food: 20, gold: 25 }, time: 12, attack: '1H_Melee_Attack_Chop', weapons: ['Knife'] },
+  mage: { hp: 65, damage: 15, range: 3, splash: 1, speed: 1.1, cost: { food: 30, gold: 80 }, time: 30, attack: 'Spellcast_Shoot', weapons: ['2H_Staff'], shoots: 'spell' },
 };
 export const ATTACK_COOLDOWN = 1.2;
+export const UPKEEP = 0.07; // food each unit eats per second
+export const SIEGE = 0.5; // share of a monster's damage that buildings take
 export const AGGRO_RANGE = 3;
 export const UNIT_REVEAL = 2;
 
@@ -51,7 +53,7 @@ export const MONSTERS = {
   slime: { hp: 45, damage: 6, range: 1, speed: 0.8, bounty: 4 },
   spirit: { hp: 32, damage: 9, range: 1, speed: 1.5, bounty: 6 },
   golem: { hp: 240, damage: 22, range: 1, speed: 0.55, bounty: 25 },
-  titan: { hp: 1400, damage: 45, range: 1, speed: 0.45, bounty: 150, boss: true },
+  titan: { hp: 800, damage: 30, range: 1, speed: 0.45, bounty: 150, boss: true },
 };
 export const BOSS_EVERY = 5; // every 5th wave brings a boss
 
@@ -60,18 +62,18 @@ export const FIRST_WAVE = 10 * 60;
 export const WAVE_EVERY = 4 * 60;
 export function waveMonsters(n) {
   return [
-    ...Array(2 + n).fill('slime'),
-    ...Array(Math.max(0, n - 2)).fill('spirit'),
-    ...Array(Math.max(0, Math.floor((n - 3) / 2))).fill('golem'),
-    ...Array(n % BOSS_EVERY === 0 ? n / BOSS_EVERY : 0).fill('titan'),
+    ...Array(2 + Math.floor(n * 0.8)).fill('slime'),
+    ...Array(Math.max(0, Math.floor((n - 2) * 0.7))).fill('spirit'),
+    ...Array(Math.max(0, Math.floor((n - 3) / 3))).fill('golem'),
+    ...Array(n % BOSS_EVERY === 0 ? 1 + Math.floor(n / 15) : 0).fill('titan'),
   ];
 }
-export const waveStrength = (n) => 1.1 ** (n - 1);
+export const waveStrength = (n) => 1.05 ** (n - 1);
 
 // Dungeons: send a party; after a while they come back with loot, or not everyone does.
 export const DUNGEON_MAX_TIER = 6;
 export const dungeonTime = (tier) => 45 + 30 * tier;
-export const dungeonNeed = (tier) => 160 * 1.7 ** (tier - 1);
+export const dungeonNeed = (tier) => 200 * 1.9 ** (tier - 1);
 export const DUNGEON_COOLDOWN = 5 * 60;
 export const dungeonLoot = (tier) => ({ gold: 50 * tier, stone: 30 * tier, wood: 30 * tier, food: 40 * tier });
 
@@ -85,10 +87,10 @@ export const upgradeTime = (type, level) => Math.round((BUILDINGS[type].time ?? 
 
 // Heroes grow with experience: from kills (their share of the monster's bounty) and
 // dungeon runs. Each level above the first adds to health and damage.
-export const LEVEL_XP = [0, 40, 120, 250, 450]; // experience needed for levels 1..5
+export const LEVEL_XP = [0, 60, 180, 380, 700]; // experience needed for levels 1..5
 export const LEVEL_BONUS = 0.12;
 export const KILL_XP = 3; // × the monster's bounty
-export const DUNGEON_XP = 30; // × the tier, for a win (a third of it for a loss)
+export const DUNGEON_XP = 20; // × the tier, for a win (a third of it for a loss)
 export const HERO_NAMES = ['Aldric', 'Bryn', 'Cora', 'Dag', 'Edda', 'Finn', 'Greta', 'Hugo', 'Ivar', 'Juno', 'Kai', 'Lina', 'Mats', 'Nora', 'Otto', 'Pia', 'Rune', 'Sigrid', 'Tove', 'Ulf', 'Vera', 'Wilma', 'Yrsa', 'Ebbe', 'Saga', 'Leif', 'Alva', 'Torsten'];
 
 // Blacksmith research: every tier makes all units hit harder (weapons) or last longer (armour).

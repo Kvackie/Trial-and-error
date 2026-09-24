@@ -29,6 +29,8 @@ import {
   researchTime,
   STORAGE,
   UNIT_REVEAL,
+  UPKEEP,
+  SIEGE,
   UNITS,
   WAVE_EVERY,
   dungeonLoot,
@@ -201,6 +203,8 @@ export function rates(state) {
     if (def.workers) factor *= staffed;
     for (const [res, amount] of Object.entries(def.produce)) out[res] += amount * factor;
   }
+  // Units eat.
+  out.food -= state.units.length * UPKEEP;
   return out;
 }
 
@@ -208,7 +212,7 @@ export const canAfford = (state, cost) => Object.entries(cost).every(([r, v]) =>
 const pay = (state, cost) => Object.entries(cost).forEach(([r, v]) => (state.res[r] -= v));
 const addResources = (state, gain) => {
   const cap = storage(state);
-  for (const [r, v] of Object.entries(gain)) state.res[r] = Math.min(cap, state.res[r] + v);
+  for (const [r, v] of Object.entries(gain)) state.res[r] = Math.max(0, Math.min(cap, state.res[r] + v));
 };
 
 // Why this building can't go on this hex, or null if it can.
@@ -531,7 +535,7 @@ function walk(_state, actor, speed, dt) {
 
 function damageBuilding(state, b, amount, events) {
   if (b.state === 'destroyed') return;
-  b.hp -= amount;
+  b.hp -= amount * SIEGE;
   if (b.hp <= 0) {
     b.hp = 0;
     b.state = 'destroyed';
@@ -719,9 +723,18 @@ export function tick(state, dt) {
     state.goalTimer = 1;
     checkGoals(state, events);
   }
-  // A slow heal for units standing idle near buildings.
+  // Out of food: units go hungry and weaken (down to a third of their health).
+  if (state.res.food <= 0) {
+    for (const u of state.units) if (u.state !== 'away') u.hp = Math.max(Math.min(u.hp, maxHp(state, u) / 3), u.hp - dt);
+    state.hungryTimer = (state.hungryTimer ?? 0) - dt;
+    if (state.units.length && state.hungryTimer <= 0) {
+      state.hungryTimer = 60;
+      events.push({ type: 'hungry' });
+    }
+  }
+  // A slow heal for units standing idle near buildings (if there's food).
   for (const u of state.units) {
-    if (u.state === 'idle' && u.hp < maxHp(state, u) && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {
+    if (state.res.food > 0 && u.state === 'idle' && u.hp < maxHp(state, u) && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {
       u.hp = Math.min(maxHp(state, u), u.hp + 2 * dt);
     }
   }

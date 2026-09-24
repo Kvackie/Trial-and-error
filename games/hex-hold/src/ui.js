@@ -46,7 +46,7 @@ export class UI {
     this.top.innerHTML =
       RESOURCES.map(
         (res) =>
-          `<span class="chip ${state.res[res] >= cap ? 'full' : ''}" title="${esc(tr(res))}">${ICONS[res]}<b>${Math.floor(state.res[res])}</b><small>${r[res] > 0 ? `+${Math.round(r[res] * 60)}` : ''}</small></span>`,
+          `<span class="chip ${state.res[res] >= cap ? 'full' : ''}" title="${esc(tr(res))}">${ICONS[res]}<b>${Math.floor(state.res[res])}</b><small class="${r[res] < 0 ? 'minus' : ''}">${Math.round(r[res] * 60) > 0 ? `+${Math.round(r[res] * 60)}` : Math.round(r[res] * 60) < 0 ? Math.round(r[res] * 60) : ''}</small></span>`,
       ).join('') + `<span class="chip ${used >= people ? 'full' : ''}" title="${esc(tr('people'))}">${ICONS.people}<b>${used}/${people}</b></span>`;
     const w = state.wave;
     if (state.monsters.length) this.wave.textContent = tr('waveNow', { n: w.number });
