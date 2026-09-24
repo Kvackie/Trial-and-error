@@ -1,6 +1,6 @@
 import { openHelpDialog } from '../../../shared/help-dialog.js';
 import { getLang, t } from '../../../shared/i18n.js';
-import { MOVES } from './logic.js';
+import { MODES } from './modes.js';
 import { SPECIAL_ART, artPath } from './art.js';
 import { tr } from './strings.js';
 
@@ -19,9 +19,16 @@ const HTML = {
         <li>Swipe a potion towards its neighbour, or tap one potion and then the other.</li>
         <li>On a computer: <b>W A S D</b> move the gold cursor, <b>Space</b> picks up the potion under it, then
           <b>W A S D</b> swaps it that way.</li>
-        <li>Swaps that make a match are free. A swap that <b>doesn't</b> make a match slides back and costs a move.</li>
-        <li>You start with <b>${MOVES} moves</b>. When they're gone the game ends, so a careful player can keep going forever.</li>
+        <li>A swap that <b>doesn't</b> make a match slides back.</li>
         <li>Stuck? After a few seconds a possible move starts to wiggle.</li>
+      </ul>
+      <h3>Two modes</h3>
+      <p>Pick one at the start of every game; each has its own best score and leaderboard.</p>
+      <ul>
+        <li><b>Classic:</b> ${MODES.classic.moves} moves, and every swap costs one. Making a special earns a move back, and so
+          does a chain of 3 or more matches.</li>
+        <li><b>Zen:</b> matches are free; only a swap that makes no match costs one of your ${MODES.zen.moves} moves, so a
+          careful player can keep going forever.</li>
       </ul>
       <h3>Special potions</h3>
       <p>A bigger match you make yourself leaves a special potion behind (matches that happen as potions fall don't). Specials don't match by colour: they go off when you swap them
@@ -39,9 +46,16 @@ const HTML = {
         <li>Svep en dryck mot sin granne, eller tryck på en dryck och sedan på den andra.</li>
         <li>På en dator: <b>W A S D</b> flyttar den gyllene markören, <b>mellanslag</b> plockar upp drycken under den,
           och sedan byter <b>W A S D</b> den åt det hållet.</li>
-        <li>Byten som ger en matchning är gratis. Ett byte som <b>inte</b> ger någon matchning glider tillbaka och kostar ett drag.</li>
-        <li>Du börjar med <b>${MOVES} drag</b>. När de är slut är spelet över, så en noggrann spelare kan fortsätta hur länge som helst.</li>
+        <li>Ett byte som <b>inte</b> ger någon matchning glider tillbaka.</li>
         <li>Fastnat? Efter några sekunder börjar ett möjligt drag vicka.</li>
+      </ul>
+      <h3>Två lägen</h3>
+      <p>Välj ett i början av varje spel; de har var sitt rekord och var sin topplista.</p>
+      <ul>
+        <li><b>Klassiskt:</b> ${MODES.classic.moves} drag, och varje byte kostar ett. En specialdryck ger ett drag tillbaka,
+          och det gör också en kedja på 3 eller fler matchningar.</li>
+        <li><b>Zen:</b> matchningar är gratis; bara ett byte utan matchning kostar ett av dina ${MODES.zen.moves} drag, så en
+          noggrann spelare kan fortsätta hur länge som helst.</li>
       </ul>
       <h3>Specialdrycker</h3>
       <p>En större matchning som du gör själv lämnar kvar en specialdryck (matchningar som uppstår när drycker faller gör det inte). Specialdrycker matchas inte efter färg: de utlöses när du byter

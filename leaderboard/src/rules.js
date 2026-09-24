@@ -4,7 +4,8 @@
 // One entry per game with a leaderboard. max rejects impossible scores.
 export const GAMES = {
   'block-drop': { max: 5_000_000 },
-  'potion-match': { max: 50_000_000 },
+  'potion-match': { max: 50_000_000 }, // Zen mode (endless)
+  'potion-match-classic': { max: 5_000_000 },
   'lantern-maze': { max: 1_000 }, // deepest level reached
 };
 

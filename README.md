@@ -12,7 +12,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Game (Swedish name) | Play | Folder | What it is |
 |---|---|---|---|
 | Block Drop (Blockfall) | [Play](https://kvackie.github.io/Trial-and-error/block-drop/) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
-| Potion Match (Trolldrycker) | [Play](https://kvackie.github.io/Trial-and-error/potion-match/) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
+| Potion Match (Trolldrycker) | [Play](https://kvackie.github.io/Trial-and-error/potion-match/) | `games/potion-match/` | Match-three on a 6×6 board with potion art from Eternal Alchemy. Two modes: Classic (every swap costs a move; specials and long chains earn moves back) and Zen (only misses cost a move), each with its own leaderboard. |
 | Lantern Maze (Lyktlabyrinten) | [Play](https://kvackie.github.io/Trial-and-error/lantern-maze/) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
 | Hex Hold (Hexfästet) | [Play](https://kvackie.github.io/Trial-and-error/hex-hold/) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
 

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { Board, COLS, MOVES, ROWS } from '../logic.js';
+import { Board, COLS, ROWS } from '../logic.js';
+import { MODES, bonusMoves, loadMode, saveMode } from '../modes.js';
 import { POTIONS, SPECIAL_ART, artPath } from '../art.js';
 import { openHelp } from '../help.js';
 import { bindKeys } from '../../../../shared/keyboard.js';
@@ -37,7 +38,8 @@ export class GameScene extends Phaser.Scene {
 
     this.board = new Board();
     this.score = 0;
-    this.movesLeft = MOVES;
+    this.mode = loadMode();
+    this.movesLeft = MODES[this.mode].moves;
     this.busy = false;
     this.selected = null;
     this.pending = null;
@@ -56,7 +58,54 @@ export class GameScene extends Phaser.Scene {
 
     this.setUpInput();
     this.setUpKeys();
-    this.restartHintTimer();
+    this.chooseMode();
+  }
+
+  // --- Mode --------------------------------------------------------------------
+
+  // Every game starts by picking Classic or Zen (the last choice is highlighted).
+  chooseMode() {
+    this.choosing = true;
+    const { width, height } = this.scale;
+    const layer = this.add.container(0, 0).setDepth(10);
+    const shade = this.add.rectangle(width / 2, height / 2, width, height, 0x0d0620, 0.82).setInteractive();
+    layer.add(shade);
+    const title = this.add.text(360, this.boardY + 40, '', { fontFamily: 'sans-serif', fontSize: '44px', fontStyle: 'bold', color: '#ffd23f' }).setOrigin(0.5);
+    bindText(this, title, () => tr('chooseMode'));
+    layer.add(title);
+    const cards = ['classic', 'zen'].map((mode, i) => {
+      const y = this.boardY + 200 + i * 250;
+      const card = this.add.rectangle(360, y, 600, 210, 0x2a1450).setStrokeStyle(4, 0xc77dff).setInteractive({ useHandCursor: true });
+      const name = this.add.text(360, y - 58, '', { fontFamily: 'sans-serif', fontSize: '46px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+      const about = this.add
+        .text(360, y + 28, '', { fontFamily: 'sans-serif', fontSize: '26px', color: '#e8dcff', align: 'center', wordWrap: { width: 540 } })
+        .setOrigin(0.5);
+      bindText(this, name, () => tr(`mode.${mode}`));
+      bindText(this, about, () => tr(`mode.${mode}.about`));
+      card.on('pointerup', () => pick(mode));
+      layer.add([card, name, about]);
+      return { mode, card };
+    });
+    let focus = this.mode;
+    const mark = () => cards.forEach(({ mode, card }) => card.setStrokeStyle(mode === focus ? 8 : 4, mode === focus ? 0xffd23f : 0xc77dff));
+    mark();
+    const pick = (mode) => {
+      if (!this.choosing) return;
+      this.choosing = false;
+      playSound('click');
+      this.mode = mode;
+      saveMode(mode);
+      this.movesLeft = MODES[mode].moves;
+      this.movesText.setText(String(this.movesLeft));
+      this.movesLabel.setText(tr(mode === 'zen' ? 'misses' : 'moves'));
+      layer.destroy();
+      this.restartHintTimer();
+    };
+    const toggle = () => {
+      focus = focus === 'classic' ? 'zen' : 'classic';
+      mark();
+    };
+    bindKeys(this, { up: toggle, down: toggle, left: toggle, right: toggle, action: () => pick(focus) }, () => !this.choosing);
   }
 
   // --- Layout ----------------------------------------------------------------
@@ -66,7 +115,10 @@ export class GameScene extends Phaser.Scene {
     const text = { fontFamily: 'sans-serif', color: '#ffffff' };
     bindText(this, this.add.text(BOARD_X + 84, y, '', { ...text, fontSize: '26px', color: '#e8dcff' }), () => tr('score'));
     this.scoreText = this.add.text(BOARD_X + 84, y + 32, '0', { ...text, fontSize: '68px', fontStyle: 'bold', color: '#ffd23f' });
-    bindText(this, this.add.text(720 - BOARD_X - 4, y, '', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0), () => tr('moves'));
+    // Classic counts every swap; Zen only the misses.
+    this.movesLabel = bindText(this, this.add.text(720 - BOARD_X - 4, y, '', { ...text, fontSize: '26px', color: '#e8dcff' }).setOrigin(1, 0), () =>
+      tr(this.mode === 'zen' ? 'misses' : 'moves'),
+    );
     this.movesText = this.add
       .text(720 - BOARD_X - 4, y + 32, String(this.movesLeft), { ...text, fontSize: '68px', fontStyle: 'bold' })
       .setOrigin(1, 0);
@@ -86,7 +138,9 @@ export class GameScene extends Phaser.Scene {
       fill: 0x43207a,
       stroke: 0xc77dff,
       onClick: () =>
-        this.pauseFor((onClose) => openLeaderboard({ game: 'potion-match', myBest: readBest('potion-match:best'), onClose })),
+        this.pauseFor((onClose) =>
+          openLeaderboard({ game: MODES[this.mode].leaderboard, myBest: readBest(MODES[this.mode].bestKey), onClose }),
+        ),
     });
 
     addSettingsButton(this, 532, y + 62, {
@@ -174,6 +228,7 @@ export class GameScene extends Phaser.Scene {
 
   setUpInput() {
     this.input.on('pointerdown', (pointer) => {
+      if (this.choosing) return;
       const cell = this.cellAt(pointer.x, pointer.y);
       this.pending = cell ? { cell, x: pointer.x, y: pointer.y, id: pointer.id } : null;
     });
@@ -239,7 +294,7 @@ export class GameScene extends Phaser.Scene {
           this.select(same ? null : this.cursor);
         },
       },
-      () => !this.input.enabled, // help dialog open
+      () => !this.input.enabled || this.choosing, // help dialog open, or picking a mode
     );
   }
 
@@ -278,10 +333,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.movesText, scale: 1.25, duration: 120, yoyo: true });
       await this.swapViews(va, vb, a, b);
       await this.swapViews(va, vb, b, a);
-      if (this.movesLeft <= 0) {
-        this.time.delayedCall(400, () => this.scene.start('GameOver', { score: this.score }));
-        return;
-      }
+      if (this.movesLeft <= 0) return this.endGame();
       this.busy = false;
       this.restartHintTimer();
       return;
@@ -289,8 +341,22 @@ export class GameScene extends Phaser.Scene {
 
     playSound('swap');
     for (const step of result.steps) await this.animate(step, va, vb);
+    if (MODES[this.mode].everySwapCosts) {
+      // Classic: the swap costs a move; specials and long chains earn some back.
+      const bonus = bonusMoves(result.steps);
+      this.movesLeft += bonus - 1;
+      this.movesText.setText(String(this.movesLeft));
+      this.tweens.add({ targets: this.movesText, scale: 1.25, duration: 120, yoyo: true });
+      if (bonus) this.floatText({ x: 360, y: this.boardY - 10 }, tr('bonusMoves', { n: bonus }), 2);
+      if (this.movesLeft <= 0) return this.endGame();
+    }
     this.busy = false;
     this.restartHintTimer();
+  }
+
+  endGame() {
+    const { bestKey, leaderboard } = MODES[this.mode];
+    this.time.delayedCall(400, () => this.scene.start('GameOver', { score: this.score, bestKey, leaderboard: { game: leaderboard } }));
   }
 
   // --- Animation ---------------------------------------------------------------

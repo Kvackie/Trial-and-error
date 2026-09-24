@@ -7,13 +7,17 @@ import { playSound } from './sound.js';
 // Game Over screen shared by the games: score, best score (kept per game in
 // localStorage) and tap (or Space) to play again. Start it with scene.start('GameOver', { score }).
 // With leaderboard: { game, theme }, a new best offers to go on the global leaderboard.
-export function createGameOverScene(bestKey, restartScene = 'Game', { leaderboard } = {}) {
+// A game with several modes can pass its own { bestKey, leaderboard } with the score,
+// so each mode keeps its own best and leaderboard.
+export function createGameOverScene(defaultBestKey, restartScene = 'Game', { leaderboard: defaultLeaderboard } = {}) {
   return class GameOverScene extends Phaser.Scene {
     constructor() {
       super('GameOver');
     }
 
-    create({ score }) {
+    create({ score, bestKey: modeBestKey, leaderboard: modeLeaderboard }) {
+      const bestKey = modeBestKey ?? defaultBestKey;
+      const leaderboard = modeLeaderboard ? { ...defaultLeaderboard, ...modeLeaderboard } : defaultLeaderboard;
       const { width, height } = this.scale.gameSize;
       const previous = readBest(bestKey);
       const best = Math.max(score, previous);
