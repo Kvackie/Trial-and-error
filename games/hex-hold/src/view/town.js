@@ -116,7 +116,7 @@ export class Town {
           group.add(flag);
         }
         const bar = view?.bar ?? new HealthBar(0.9);
-        bar.group.position.y = b.type === 'castle' ? 4.3 : 2;
+        bar.group.position.y = b.type === 'castle' ? 4.3 : BUILDINGS[b.type].wonder ? 3.2 : 2;
         group.add(bar.group);
         this.scene.add(group);
         view = { group, name, level: b.level, bar, bounce: view ? 0.35 : 0 };

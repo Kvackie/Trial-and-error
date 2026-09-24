@@ -256,3 +256,56 @@ test('one builder works at a time until there are more homes; the rest wait thei
   assert.equal(second.state, 'ready');
   assert.equal(builders(state), 2);
 });
+
+test('nests hide in the dark, send out the waves, and pay out when destroyed', async () => {
+  const { NESTS, NEST_RESPAWN, nestHp } = await import('../src/data.js');
+  const { nestAt } = await import('../src/sim.js');
+  const state = newGame(52);
+  assert.equal(state.nests.length, NESTS);
+  for (const n of state.nests) {
+    assert.ok(!state.revealed.has(key(n.q, n.r)), 'starts hidden');
+    assert.ok(distance([n.q, n.r], [0, 0]) >= 5);
+    assert.equal(nestAt(state, n.q, n.r), n);
+  }
+  const events = run(state, FIRST_WAVE + 1);
+  const wave = events.find((e) => e.type === 'wave');
+  assert.ok(wave.nest, 'the first wave comes out of a nest');
+  assert.ok(state.nests.some((n) => distance([n.q, n.r], wave.at) === 0));
+  assert.ok(state.nests.every((n) => n.level === 2), 'nests grow while you play');
+  assert.equal(state.nests[0].maxHp, nestHp(2));
+
+  // A knight next to a nest attacks it by itself; with the nest gone its guards go too.
+  state.monsters = [];
+  const nest = state.nests[0];
+  nest.hp = 5;
+  const { x, z } = toWorld(nest.q + 1, nest.r);
+  state.units.push({ id: 900, type: 'knight', name: 'Test', xp: 0, x, z, hp: 150, state: 'idle', path: [], cooldown: 0, target: null });
+  const gold = state.res.gold;
+  const after = run(state, 5);
+  assert.ok(after.some((e) => e.type === 'nestDestroyed'));
+  assert.equal(state.nests.length, NESTS - 1);
+  assert.ok(state.res.gold > gold);
+  assert.equal(state.stats.nests, 1);
+  assert.equal(state.nestTimer > NEST_RESPAWN - 10, true);
+  run(state, NEST_RESPAWN);
+  assert.equal(state.nests.length, NESTS, 'a new nest takes root');
+});
+
+test('wonders need a level 3 castle, one of each, and help the whole island', async () => {
+  const { castle, rates } = await import('../src/sim.js');
+  const state = newGame(61);
+  state.res = { wood: 2000, stone: 2000, food: 2000, gold: 2000 };
+  const spot = [...state.tiles.values()].find((t) => !buildProblem(state, 'home', t.q, t.r) && t.terrain === 'grass');
+  assert.equal(buildProblem(state, 'wishingwell', spot.q, spot.r), 'wonderCastle');
+  castle(state).level = 3;
+  assert.equal(buildProblem(state, 'wishingwell', spot.q, spot.r), null);
+  const farmSpot = [...state.tiles.values()].find((t) => t !== spot && !buildProblem(state, 'farm', t.q, t.r));
+  state.buildings.push({ id: 800, type: 'farm', q: farmSpot.q, r: farmSpot.r, level: 1, hp: 100, state: 'ready', left: 0, queue: [] });
+  state.buildings.push({ id: 801, type: 'home', q: 5, r: 5, level: 1, hp: 100, state: 'ready', left: 0, queue: [] });
+  const before = rates(state).food;
+  const well = build(state, 'wishingwell', spot.q, spot.r);
+  const other = [...state.tiles.values()].find((t) => t.terrain === 'grass' && !buildProblem(state, 'home', t.q, t.r));
+  assert.equal(buildProblem(state, 'wishingwell', other.q, other.r), 'wonderBuilt');
+  well.state = 'ready';
+  assert.ok(Math.abs(rates(state).food - before * 1.25) < 1e-9);
+});

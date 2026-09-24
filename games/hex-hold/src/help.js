@@ -24,9 +24,13 @@ const HTML = {
         <li>The <b>barracks</b> trains knights and barbarians, the <b>archery range</b> crossbow rogues and fast scouts, the <b>chapel</b> mages. <b>Towers</b> (and the castle itself) shoot monsters by themselves; <b>catapult towers</b> hurl boulders further, hitting several at once.</li>
         <li>Units gain experience from fights and dungeons and level up to 5 (a star each). The <b>blacksmith</b> researches better weapons and armour for all of them.</li>
         <li>Tap a unit (or <b>Army</b> to pick several), then tap a tile to send them there. They explore the dark as they go and fight monsters they meet.</li>
-        <li>After ten minutes monsters start coming from the shore at night, every few minutes and stronger each time; every fifth wave a stone titan leads them. They attack buildings; repair what they destroy.</li>
+        <li>After ten minutes waves of monsters start coming, every few minutes and stronger each time; every fifth wave a stone titan leads them. They attack buildings; repair what they destroy.</li>
         <li>An alarm warns you 30 seconds before a wave. When a building out of view is attacked, a red arrow at the screen edge points to it: tap it to look there.</li>
       </ul>
+      <h3>Monster nests</h3>
+      <p>Glowing nests hide in the dark. The waves come out of them, and a nest grows bigger (up to level 5) the longer it's left alone, making its waves bigger too. Send your army to destroy one for a big reward, but its guards will fight back. With no nest left, waves are smaller and come from the sea, until a new nest takes root.</p>
+      <h3>Wonders</h3>
+      <p>With the castle at level 3 you can build four gilded wonders, one of each. They cost a lot but help the whole island: the <b>Wishing well</b> makes every building produce 25% more; the <b>Cathedral</b> heals units anywhere and gives them 50% more experience; the <b>Beacon tower</b> shows the whole map and makes towers and the castle hit 50% harder; the <b>Grand bazaar</b> makes gold and better market trades.</p>
       <h3>Dungeons</h3>
       <p>Dark doorways hide dungeons. Tap one and send a party. They come back after a while: with loot if they win, fewer of them if they don't. Each win makes that dungeon harder and richer.</p>
       <h3>While you're away</h3>
@@ -54,9 +58,13 @@ const HTML = {
         <li><b>Kasernen</b> tränar riddare och barbarer, <b>skjutbanan</b> armborstskyttar och snabba spejare, <b>kapellet</b> magiker. <b>Torn</b> (och själva borgen) skjuter monster av sig själva; <b>katapulttorn</b> slungar stenblock längre och träffar flera på en gång.</li>
         <li>Enheter får erfarenhet av strider och grottor och går upp till nivå 5 (en stjärna per nivå). <b>Smedjan</b> forskar fram bättre vapen och rustningar åt alla.</li>
         <li>Tryck på en enhet (eller <b>Armé</b> för att välja flera) och sedan på en ruta för att skicka dem dit. De utforskar mörkret på vägen och slåss mot monster de möter.</li>
-        <li>Efter tio minuter börjar monster komma från stranden på natten, med några minuters mellanrum och starkare varje gång; var femte våg leds av en stentitan. De anfaller byggnader; reparera det de förstör.</li>
+        <li>Efter tio minuter börjar vågor av monster komma, med några minuters mellanrum och starkare varje gång; var femte våg leds av en stentitan. De anfaller byggnader; reparera det de förstör.</li>
         <li>Ett larm varnar 30 sekunder före en våg. När en byggnad utanför bilden anfalls pekar en röd pil vid skärmkanten mot den: tryck på den för att titta dit.</li>
       </ul>
+      <h3>Monsterbon</h3>
+      <p>Glödande bon gömmer sig i mörkret. Vågorna kommer därifrån, och ett bo växer (upp till nivå 5) ju längre det får vara ifred, så att vågorna också blir större. Skicka armén för att förstöra ett och få en stor belöning, men dess vakter slår tillbaka. När inga bon finns kvar blir vågorna mindre och kommer från havet, tills ett nytt bo slår rot.</p>
+      <h3>Underverk</h3>
+      <p>När borgen är på nivå 3 kan du bygga fyra förgyllda underverk, ett av varje. De kostar mycket men hjälper hela ön: <b>Önskebrunnen</b> får varje byggnad att producera 25 % mer; <b>Katedralen</b> läker enheter var de än är och ger dem 50 % mer erfarenhet; <b>Fyrtornet</b> visar hela kartan och får torn och borgen att slå 50 % hårdare; <b>Stora basaren</b> ger guld och bättre byten på marknaden.</p>
       <h3>Grottor</h3>
       <p>Mörka portar döljer grottor. Tryck på en och skicka in en grupp. De kommer tillbaka efter en stund: med byte om de vinner, färre om de förlorar. Varje seger gör grottan svårare och rikare.</p>
       <h3>När du är borta</h3>

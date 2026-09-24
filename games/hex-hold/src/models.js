@@ -36,6 +36,11 @@ export const WORLD_MODELS = {
     'building_blacksmith_blue',
     'building_tavern_blue',
     'building_tower_catapult_blue',
+    // wonders (gilded)
+    'building_well_yellow',
+    'building_church_yellow',
+    'building_tower_B_yellow',
+    'building_market_yellow',
     'projectile_catapult',
     'building_bridge_A',
     'wall_straight',

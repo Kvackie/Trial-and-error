@@ -40,6 +40,18 @@ import {
   upgradeTime,
   waveMonsters,
   waveStrength,
+  NESTS,
+  NEST_GROW,
+  NEST_GUARD_EVERY,
+  NEST_MAX_LEVEL,
+  NEST_MIN_DISTANCE,
+  NEST_RESPAWN,
+  NO_NEST_SHARE,
+  nestExtra,
+  nestHp,
+  nestLoot,
+  WONDER,
+  WONDER_CASTLE,
 } from './data.js';
 import { advanceTutorial } from './tutorial.js';
 import { distance, findPath, fromWorld, key, neighbours, parse, spiral, toWorld } from './hex.js';
@@ -68,12 +80,45 @@ export function newGame(seed = Math.floor(Math.random() * 2 ** 31)) {
     stats: { kills: 0, dungeonWins: 0, deepest: 0, titans: 0 },
     goals: [],
     tutorial: { step: 0, done: false },
+    nests: [],
+    nestTimer: null,
     nextId: 1,
   };
   addBuilding(state, 'castle', 0, 0, { ready: true });
   reveal(state, 0, 0, BUILDINGS.castle.reveal);
+  placeNests(state, NESTS, seeded(seed + 7));
   return state;
 }
+
+// Nests go on grass out in the dark, apart from each other and from the town.
+function nestSpot(state, rng) {
+  const spots = [...state.tiles.values()].filter(
+    (t) =>
+      t.terrain === 'grass' &&
+      !t.islet &&
+      !t.dungeon &&
+      distance([t.q, t.r], [0, 0]) >= NEST_MIN_DISTANCE &&
+      !state.buildings.some((b) => distance([b.q, b.r], [t.q, t.r]) <= 3) &&
+      !state.nests.some((n) => distance([n.q, n.r], [t.q, t.r]) < 5),
+  );
+  // In the dark if there's any dark left.
+  const hidden = spots.filter((t) => !state.revealed.has(key(t.q, t.r)));
+  const from = hidden.length ? hidden : spots;
+  return from.length ? from[Math.floor(rng() * from.length)] : null;
+}
+
+function placeNests(state, count, rng = Math.random) {
+  for (let i = 0; i < count; i++) {
+    const t = nestSpot(state, rng);
+    if (!t) return;
+    const { x, z } = toWorld(t.q, t.r);
+    const level = 1;
+    state.nests.push({ id: state.nextId++, nest: true, q: t.q, r: t.r, x, z, level, hp: nestHp(level), maxHp: nestHp(level), grow: NEST_GROW, guard: NEST_GUARD_EVERY });
+  }
+}
+// A wave is on (nest guards staying home don't count).
+export const waveOn = (state) => state.monsters.some((m) => !m.guard);
+export const nestAt = (state, q, r) => (state.nests ?? []).find((n) => n.q === q && n.r === r);
 
 export function serialise(state) {
   return JSON.stringify({
@@ -98,7 +143,13 @@ export function deserialise(text) {
   delete saved.cleared;
   for (const a of [...saved.units, ...saved.monsters]) a.target = null;
   delete saved.roads; // older saves had roads
-  return { ...saved, tiles, revealed: new Set(saved.revealed), shots: [] };
+  const state = { ...saved, tiles, revealed: new Set(saved.revealed), shots: [] };
+  if (!state.nests) {
+    // Saves from before nests: they appear in the dark now.
+    state.nests = [];
+    placeNests(state, NESTS, seeded(state.seed + 7));
+  }
+  return state;
 }
 
 // --- Queries ----------------------------------------------------------------------------
@@ -119,9 +170,12 @@ export function tradeProblem(state, market, give, get) {
   return null;
 }
 
+// What a trade at this market gives (the Grand bazaar makes every trade better).
+export const tradeAmount = (state, market, give, get) => Math.floor(tradeGet(give, get, market.level) * (1 + (hasWonder(state, 'bazaar') ? WONDER.trade : 0)));
+
 export function trade(state, market, give, get) {
   if (tradeProblem(state, market, give, get)) return 0;
-  const amount = tradeGet(give, get, market.level);
+  const amount = tradeAmount(state, market, give, get);
   state.res[give] -= TRADE_AMOUNT;
   addResources(state, { [get]: amount });
   return amount;
@@ -148,7 +202,7 @@ function giveXp(state, u, amount, events) {
   if (!u || u.dead) return;
   const before = heroLevel(u);
   const hurt = maxHp(state, u) - u.hp;
-  u.xp = (u.xp ?? 0) + amount;
+  u.xp = (u.xp ?? 0) + Math.round(amount * (hasWonder(state, 'cathedral') ? WONDER.xp : 1));
   if (heroLevel(u) > before) {
     u.hp = maxHp(state, u) - hurt;
     events.push({ type: 'levelUp', unit: u, level: heroLevel(u) });
@@ -173,6 +227,7 @@ export function startResearch(state, b, track) {
 }
 
 const working = (b) => b.state === 'ready' || b.state === 'upgrading';
+export const hasWonder = (state, type) => state.buildings.some((b) => b.type === type && b.state === 'ready');
 
 export function population(state) {
   let cap = 0;
@@ -203,6 +258,7 @@ export function rates(state) {
     let factor = b.level === 1 ? 1 : b.level === 2 ? 1.8 : 2.6;
     if (def.perNear) factor *= Math.min(3, neighbours(b.q, b.r).filter(([q, r]) => tileAt(state, q, r)?.terrain === def.perNear).length);
     if (def.workers) factor *= staffed;
+    if (hasWonder(state, 'wishingwell')) factor *= WONDER.production;
     for (const [res, amount] of Object.entries(def.produce)) out[res] += amount * factor;
   }
   // Units eat.
@@ -231,7 +287,11 @@ export function buildProblem(state, type, q, r) {
       return (n && isPassable(n)) || (other && BUILDINGS[other.type].bridge);
     });
     if (!joins) return 'bridgeLand';
-  } else if (!isPassable(tile) || tile.dungeon || buildingAt(state, q, r)) return 'occupied';
+  } else if (!isPassable(tile) || tile.dungeon || buildingAt(state, q, r) || nestAt(state, q, r)) return 'occupied';
+  if (def.wonder) {
+    if (castle(state).level < WONDER_CASTLE) return 'wonderCastle';
+    if (state.buildings.some((b) => b.type === type)) return 'wonderBuilt';
+  }
   // Walls can go a little further out, but don't stretch the town themselves.
   const reach = def.wall ? BUILD_RANGE + 1 : BUILD_RANGE;
   if (!state.buildings.some((b) => !BUILDINGS[b.type].wall && distance([b.q, b.r], [q, r]) <= reach)) return 'tooFar';
@@ -499,6 +559,18 @@ function finishDungeon(state, d, events, rng = Math.random) {
 function spawnWave(state, events) {
   state.wave.number++;
   const n = state.wave.number;
+  const strength = waveStrength(n);
+  // Out of a nest (the biggest one, or any at random), bigger for a grown nest.
+  const nests = state.nests ?? [];
+  if (nests.length) {
+    const nest = nests[Math.floor(Math.random() * nests.length)];
+    const list = [...waveMonsters(n), ...nestExtra(nest.level)];
+    const spots = [[nest.q, nest.r], ...neighbours(nest.q, nest.r)].filter(([q, r]) => canMonsterStand(state, q, r));
+    list.forEach((type, i) => addMonster(state, type, spots[i % spots.length], strength));
+    reveal(state, nest.q, nest.r, 1);
+    events.push({ type: 'wave', number: n, at: [nest.q, nest.r], boss: list.includes('titan'), nest: true });
+    return;
+  }
   const shore = [...state.tiles.values()].filter(
     (t) => isPassable(t) && !t.islet && distance([t.q, t.r], [0, 0]) < RADIUS && !t.dungeon && !buildingAt(state, t.q, t.r) && distance([t.q, t.r], [0, 0]) >= 4 && neighbours(t.q, t.r).some(([q, r]) => tileAt(state, q, r)?.terrain === 'water' || !tileAt(state, q, r)),
   );
@@ -507,16 +579,97 @@ function spawnWave(state, events) {
   // All from one side of the island, so there's a direction to defend.
   const start = shore[Math.floor(Math.random() * Math.min(shore.length, 6))];
   const spots = shore.filter((t) => distance([t.q, t.r], [start.q, start.r]) <= 3);
-  const strength = waveStrength(n);
-  waveMonsters(n).forEach((type, i) => {
+  // No nests: a smaller wave from the sea (the boss still comes).
+  const all = waveMonsters(n);
+  const skip = Math.floor(all.filter((t) => t !== 'titan').length * (1 - NO_NEST_SHARE));
+  const list = all.filter((t, i) => t === 'titan' || i >= skip);
+  list.forEach((type, i) => {
     const t = spots[i % spots.length];
-    const { x, z } = toWorld(t.q, t.r);
-    const hp = Math.round(MONSTERS[type].hp * strength);
-    state.monsters.push({ id: state.nextId++, type, x, z, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength });
+    addMonster(state, type, [t.q, t.r], strength);
   });
   reveal(state, start.q, start.r, 1);
-  events.push({ type: 'wave', number: n, at: [start.q, start.r], boss: waveMonsters(n).includes('titan') });
+  events.push({ type: 'wave', number: n, at: [start.q, start.r], boss: list.includes('titan') });
 }
+
+const canMonsterStand = (state, q, r) => isPassable(tileAt(state, q, r)) && !buildingAt(state, q, r);
+
+function addMonster(state, type, [q, r], strength, extra = {}) {
+  const { x, z } = toWorld(q, r);
+  const hp = Math.round(MONSTERS[type].hp * strength);
+  const m = { id: state.nextId++, type, x, z, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength, ...extra };
+  state.monsters.push(m);
+  return m;
+}
+
+// Nests grow over time, heal when left alone, and send out guards at units nearby.
+function nestsTick(state, dt, events) {
+  state.nests ??= [];
+  for (const nest of state.nests) {
+    if (!nest.seen && state.revealed.has(key(nest.q, nest.r))) {
+      nest.seen = true;
+      events.push({ type: 'nestFound', nest });
+    }
+    nest.grow -= dt;
+    if (nest.grow <= 0 && nest.level < NEST_MAX_LEVEL) {
+      nest.level++;
+      nest.grow = NEST_GROW;
+      const more = nestHp(nest.level) - nest.maxHp;
+      nest.maxHp += more;
+      nest.hp += more;
+      if (state.revealed.has(key(nest.q, nest.r))) events.push({ type: 'nestGrew', nest });
+    }
+    const near = state.units.filter((u) => u.state !== 'away' && hexDist(u, nest) <= 3);
+    if (!near.length) {
+      nest.hp = Math.min(nest.maxHp, nest.hp + 2 * dt);
+      nest.guard = Math.min(nest.guard, 5);
+      continue;
+    }
+    nest.guard -= dt;
+    const guards = state.monsters.filter((m) => m.guard === nest.id).length;
+    if (nest.guard <= 0 && guards < 2 + nest.level) {
+      nest.guard = NEST_GUARD_EVERY;
+      const strength = waveStrength(Math.max(1, state.wave.number));
+      const spots = neighbours(nest.q, nest.r).filter(([q, r]) => canMonsterStand(state, q, r));
+      for (let i = 0; i < 1 + Math.floor(nest.level / 2); i++) {
+        if (spots.length) addMonster(state, i % 2 ? 'spirit' : 'slime', spots[i % spots.length], strength, { guard: nest.id });
+      }
+      events.push({ type: 'guards', nest });
+    }
+  }
+  // A new nest takes root a while after one is destroyed.
+  if (state.nestTimer !== undefined && state.nestTimer !== null) {
+    state.nestTimer -= dt;
+    if (state.nestTimer <= 0) {
+      state.nestTimer = state.nests.length + 1 < NESTS ? NEST_RESPAWN : null;
+      placeNests(state, 1);
+    }
+  }
+}
+
+function hitNest(state, nest, amount, events, by = null) {
+  nest.hp -= amount;
+  if (nest.hp > 0 || nest.dead) return;
+  nest.dead = true;
+  state.nests = state.nests.filter((n) => n !== nest);
+  const loot = nestLoot(nest.level);
+  addResources(state, loot);
+  const stats = stat(state);
+  stats.nests = (stats.nests ?? 0) + 1;
+  if (state.nestTimer === undefined || state.nestTimer === null) state.nestTimer = NEST_RESPAWN;
+  // Its guards crumble with it.
+  for (const m of state.monsters) {
+    if (m.guard === nest.id && !m.dead) {
+      m.dead = true;
+      events.push({ type: 'monsterDied', monster: m });
+    }
+  }
+  const killer = by && state.units.find((u) => u.id === by);
+  giveXp(state, killer, 40 * nest.level, events);
+  events.push({ type: 'nestDestroyed', nest, loot });
+}
+
+// Something a unit hits: a monster or a nest.
+const hit = (state, target, amount, events, by) => (target.nest ? hitNest(state, target, amount, events, by) : hitMonster(state, target, amount, events, by));
 
 const hexOf = (a) => fromWorld(a.x, a.z);
 const hexDist = (a, b) => distance(hexOf(a), hexOf(b));
@@ -595,6 +748,14 @@ function combat(state, dt, events) {
     const siege = m.siege && buildingTargets.find((b) => b.id === m.siege);
     if (!siege) m.siege = null;
     let target = siege ? { kind: 'wall', ref: siege } : nearUnit ? { kind: 'unit', ref: nearUnit } : null;
+    if (!target && m.guard && state.nests.some((n) => n.id === m.guard)) {
+      // A guard with nobody to chase goes back to its nest.
+      const nest = state.nests.find((n) => n.id === m.guard);
+      if (hexDist(m, nest) > 1 && atCentre(m) && !m.path.length) m.path = findPath(hexOf(m), [nest.q, nest.r], passCost(state, true), 400) ?? [];
+      if (m.path.length) walk(state, m, def.speed, dt);
+      else settle(m, def.speed, dt);
+      continue;
+    }
     if (!target && buildingTargets.length) {
       const b = buildingTargets.reduce((best, o) => (distance([o.q, o.r], hexOf(m)) < distance([best.q, best.r], hexOf(m)) ? o : best));
       target = { kind: 'building', ref: b };
@@ -647,6 +808,8 @@ function combat(state, dt, events) {
     let foe = u.target && alive(u.target) ? u.target : null;
     if (!foe && (!u.order || !u.path.length)) {
       foe = monsters.filter((m) => worldDist(m, u) <= AGGRO_RANGE).sort((a, b) => worldDist(a, u) - worldDist(b, u))[0] ?? null;
+      // Nothing to fight: go for a nest close by.
+      foe ??= (state.nests ?? []).filter((n) => alive(n) && hexDist(n, u) <= AGGRO_RANGE).sort((a, b) => hexDist(a, u) - hexDist(b, u))[0] ?? null;
     }
     u.target = foe;
     const inReach = foe && distance(hexOf(u), hexOf(foe)) <= def.range;
@@ -665,7 +828,7 @@ function combat(state, dt, events) {
         if (def.shoots) {
           state.shots.push({ kind: def.shoots, from: { x: u.x, z: u.z }, to: foe, t: 0, damage: damageOf(state, u), splash: def.splash ?? 0, by: u.id });
         } else {
-          hitMonster(state, foe, damageOf(state, u), events, u.id);
+          hit(state, foe, damageOf(state, u), events, u.id);
         }
       }
     } else if (foe && !u.order) {
@@ -701,7 +864,8 @@ function combat(state, dt, events) {
     const foe = state.monsters.filter((m) => alive(m) && worldDist(m, at) <= attack.range).sort((a, c) => worldDist(a, at) - worldDist(c, at))[0];
     if (foe) {
       b.cooldown = attack.cooldown;
-      state.shots.push({ kind: attack.shot ?? 'arrow', from: { x: at.x, z: at.z, y: 2 }, to: foe, t: 0, damage: attack.damage * b.level, splash: attack.splash ?? 0, slow: attack.shot === 'boulder' });
+      const damage = Math.round(attack.damage * b.level * (hasWonder(state, 'beacon') ? WONDER.towers : 1));
+      state.shots.push({ kind: attack.shot ?? 'arrow', from: { x: at.x, z: at.z, y: 2 }, to: foe, t: 0, damage, splash: attack.splash ?? 0, slow: attack.shot === 'boulder' });
     }
   }
 
@@ -712,7 +876,8 @@ function combat(state, dt, events) {
       s.done = true;
       if (s.splash) {
         for (const m of state.monsters) if (alive(m) && worldDist(m, s.to) <= s.splash) hitMonster(state, m, s.damage, events, s.by);
-      } else if (alive(s.to)) hitMonster(state, s.to, s.damage, events, s.by);
+        if (s.to.nest && alive(s.to)) hitNest(state, s.to, s.damage, events, s.by);
+      } else if (alive(s.to)) hit(state, s.to, s.damage, events, s.by);
     }
   }
   state.shots = state.shots.filter((s) => !s.done);
@@ -741,6 +906,7 @@ export function tick(state, dt) {
     spawnWave(state, events);
     state.wave.next = WAVE_EVERY;
   }
+  nestsTick(state, dt, events);
   combat(state, dt, events);
   state.goalTimer = (state.goalTimer ?? 0) - dt;
   if (state.goalTimer <= 0) {
@@ -760,10 +926,13 @@ export function tick(state, dt) {
       events.push({ type: 'hungry' });
     }
   }
-  // A slow heal for units standing idle near buildings (if there's food).
+  // A slow heal for units standing idle near buildings (if there's food); with the
+  // Cathedral, a faster one anywhere.
+  const blessed = hasWonder(state, 'cathedral');
   for (const u of state.units) {
-    if (state.res.food > 0 && u.state === 'idle' && u.hp < maxHp(state, u) && state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) {
-      u.hp = Math.min(maxHp(state, u), u.hp + 2 * dt);
+    if (state.res.food > 0 && u.state === 'idle' && u.hp < maxHp(state, u)) {
+      if (blessed) u.hp = Math.min(maxHp(state, u), u.hp + WONDER.heal * dt);
+      else if (state.buildings.some((b) => b.state !== 'destroyed' && hexDist(u, toWorld(b.q, b.r)) <= 1)) u.hp = Math.min(maxHp(state, u), u.hp + 2 * dt);
     }
   }
   return events;

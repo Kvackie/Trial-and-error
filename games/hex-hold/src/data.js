@@ -29,9 +29,23 @@ export const BUILDINGS = {
   gate: { model: 'wall_straight_gate', cost: { wood: 20, stone: 20 }, time: 8, hp: 350, wall: true, gate: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
   // Bridges go on water or river next to land (or another bridge) and can be walked over.
   bridge: { model: 'building_bridge_A', cost: { wood: 40, stone: 10 }, time: 15, hp: 200, fixed: true, bridge: true, terrain: ['water', 'river'] },
+  // Wonders: one of each, once the castle is at level 3. Gilded, slow to build, and
+  // each helps the whole island.
+  wishingwell: { model: 'building_well_yellow', cost: { wood: 600, stone: 500, gold: 400 }, time: 150, hp: 900, fixed: true, wonder: true, terrain: ['grass'] },
+  cathedral: { model: 'building_church_yellow', cost: { stone: 900, gold: 700 }, time: 200, hp: 1100, fixed: true, wonder: true, terrain: ['grass'] },
+  beacon: { model: 'building_tower_B_yellow', cost: { wood: 500, stone: 1000, gold: 400 }, time: 200, hp: 1200, fixed: true, wonder: true, reveal: 30, terrain: ['grass', 'hills'] },
+  bazaar: { model: 'building_market_yellow', cost: { wood: 800, stone: 400, food: 600, gold: 500 }, time: 180, hp: 900, fixed: true, wonder: true, produce: { gold: 0.6 }, terrain: ['grass'] },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 11, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'bridge', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'bridge', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith', 'wishingwell', 'cathedral', 'beacon', 'bazaar'];
+export const WONDER_CASTLE = 3; // castle level wonders need
+export const WONDER = {
+  production: 1.25, // Wishing well: everything produces this much more
+  heal: 3, // Cathedral: units heal this much per second anywhere, and gain more experience
+  xp: 1.5,
+  towers: 1.5, // Beacon: towers and the castle hit this much harder (and the whole map is revealed)
+  trade: 0.25, // Grand bazaar: better trades (and gold of its own)
+};
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 
@@ -69,6 +83,20 @@ export function waveMonsters(n) {
   ];
 }
 export const waveStrength = (n) => 1.05 ** (n - 1);
+
+// Monster nests lie hidden in the fog. Waves come out of them, bigger the more the nest
+// has grown; with no nest left, waves are smaller and come from the sea, until a new
+// nest takes root. Units that come near a nest are set on by its guards.
+export const NESTS = 3;
+export const NEST_MIN_DISTANCE = 5; // from the castle
+export const NEST_MAX_LEVEL = 5;
+export const NEST_GROW = 8 * 60; // seconds of play for a nest to grow a level
+export const NEST_RESPAWN = 12 * 60; // a new nest takes root this long after one is destroyed
+export const NEST_GUARD_EVERY = 20;
+export const nestHp = (level) => 250 + 250 * level;
+export const nestLoot = (level) => ({ gold: 80 * level, stone: 60 * level, wood: 60 * level });
+export const nestExtra = (level) => Array(level - 1).fill('spirit').concat(Array(Math.floor(level / 3)).fill('golem'));
+export const NO_NEST_SHARE = 0.6; // share of the usual wave when no nest is left
 
 // Dungeons: send a party; after a while they come back with loot, or not everyone does.
 export const DUNGEON_MAX_TIER = 6;
@@ -117,10 +145,12 @@ export const GOALS = [
   { id: 'research', reward: { gold: 80 }, check: (s) => (s.research?.weapons ?? 0) + (s.research?.armour ?? 0) >= 1 },
   { id: 'castle', reward: { wood: 150 }, check: (s) => s.buildings.some((b) => b.type === 'castle' && b.level >= 2) },
   { id: 'hero', reward: { food: 120 }, check: (s) => s.units.some((u) => (u.xp ?? 0) >= LEVEL_XP[2]) },
-  { id: 'wave5', reward: { gold: 150 }, check: (s) => s.wave.number >= 5 && !s.monsters.length },
+  { id: 'wave5', reward: { gold: 150 }, check: (s) => s.wave.number >= 5 && !s.monsters.some((m) => !m.guard) },
   { id: 'people', reward: { stone: 150 }, check: (s) => s.buildings.filter((b) => b.state !== 'destroyed').reduce((n, b) => n + (BUILDINGS[b.type].pop ?? 0) * b.level, 0) >= 30 },
   { id: 'deep', reward: { gold: 200 }, check: (s) => (s.stats?.deepest ?? 0) >= 3 },
   { id: 'titan', reward: { gold: 300 }, check: (s) => (s.stats?.titans ?? 0) >= 1 },
+  { id: 'nest', reward: { stone: 250 }, check: (s) => (s.stats?.nests ?? 0) >= 1 },
+  { id: 'wonder', reward: { gold: 400 }, check: (s) => s.buildings.some((b) => BUILDINGS[b.type].wonder && b.state === 'ready') },
 ];
 function count(state, type) {
   return state.buildings.filter((b) => b.type === type && b.state !== 'building').length;

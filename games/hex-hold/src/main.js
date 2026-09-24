@@ -110,6 +110,7 @@ const villagers = new Villagers(scene);
 let sky = null; // made once the models have loaded
 
 function save() {
+  if (!state) return;
   state.savedAt = Date.now();
   try {
     localStorage.setItem(SAVE_KEY, sim.serialise(state));
@@ -189,6 +190,15 @@ const ui = new UI({
     if (sim.sendParty(state, d, ids)) playSound('horn');
     refresh();
   },
+  onAttackNest() {
+    const nest = state.nests.find((n) => n.id === selection.id);
+    const ids = state.units.filter((u) => u.state !== 'away').map((u) => u.id);
+    if (nest && sim.moveUnits(state, ids, nest.q, nest.r)) {
+      playSound('horn');
+      selection = { kind: 'units', ids };
+    }
+    refresh();
+  },
   onSelectAll() {
     const ids = state.units.filter((u) => u.state !== 'away').map((u) => u.id);
     selection = ids.length ? { kind: 'units', ids } : null;
@@ -226,7 +236,11 @@ function refresh() {
   const hex = selection?.kind === 'tile' ? [selection.q, selection.r] : selection?.kind === 'building' ? (() => {
     const b = state.buildings.find((x) => x.id === selection.id);
     return b ? [b.q, b.r] : null;
-  })() : selection?.kind === 'dungeon' ? selection.key.split(',').map(Number) : null;
+  })() : selection?.kind === 'dungeon' ? selection.key.split(',').map(Number) : selection?.kind === 'nest' ? (() => {
+    const n = state.nests.find((x) => x.id === selection.id);
+    if (!n) selection = null;
+    return n ? [n.q, n.r] : null;
+  })() : null;
   markerGroup.visible = !!hex;
   if (hex) {
     const { x, z } = toWorld(...hex);
@@ -242,7 +256,7 @@ function lookAt(x, z) {
 
 // The wave note: tap it to see the monsters (or the castle when all is quiet).
 document.querySelector('#wave').addEventListener('click', () => {
-  const m = state.monsters[0];
+  const m = state.monsters.find((x) => !x.guard);
   const b = sim.castle(state);
   const at = m ?? toWorld(b.q, b.r);
   lookAt(at.x, at.z);
@@ -318,6 +332,7 @@ function tap(x, y) {
   const known = tile && state.revealed.has(key(q, r));
   const dungeon = known && sim.dungeonAt(state, q, r);
   const building = known && sim.buildingAt(state, q, r);
+  const nest = known && sim.nestAt(state, q, r);
 
   if (selection?.kind === 'units' && known && dungeon && dungeon.state === 'ready') {
     ui.party = new Set(selection.ids);
@@ -338,6 +353,7 @@ function tap(x, y) {
   }
   if (building) selection = { kind: 'building', id: building.id };
   else if (dungeon) selection = { kind: 'dungeon', key: dungeon.key };
+  else if (nest) selection = { kind: 'nest', id: nest.id };
   else if (known) selection = { kind: 'tile', q, r };
   else selection = null;
   playSound('click');
@@ -354,8 +370,25 @@ function react(events, now) {
   for (const e of events) {
     switch (e.type) {
       case 'built':
+        if (BUILDINGS[e.building.type].wonder) {
+          playSound('discover');
+          ui.toast(tr('wonderDone', { name: tr(`b_${e.building.type}`) }));
+          break;
+        }
         playSound('levelUp');
         ui.toast(tr('built', { name: tr(`b_${e.building.type}`) }));
+        break;
+      case 'nestFound':
+        playSound('wrong');
+        ui.toast(tr('nestFound'), 'warn');
+        break;
+      case 'nestGrew':
+        ui.toast(tr('nestGrew', { n: e.nest.level }), 'warn');
+        break;
+      case 'nestDestroyed':
+        playSound('blast');
+        playSound('discover');
+        ui.toast(tr('nestDestroyed', { loot: ui.lootText(e.loot) }));
         break;
       case 'upgraded':
         playSound('levelUp');

@@ -34,7 +34,38 @@ const MATERIALS = {
   rock: mat(0x8c7f70),
   rockDark: mat(0x6a5f55),
   moss: mat(0x5d8a3a),
+  mound: mat(0x3b2a3a, { roughness: 0.9 }),
+  moundDark: mat(0x251a26, { roughness: 0.9 }),
+  crystal: new THREE.MeshStandardMaterial({ color: 0x9b5cff, emissive: 0x6a2bd8, emissiveIntensity: 0.9, roughness: 0.3, flatShading: true }),
 };
+const NEST_GLOW = new THREE.MeshBasicMaterial({ color: 0xb37bff, transparent: true, opacity: 0.25, depthWrite: false });
+
+// A monster nest: a dark mound with glowing crystals, more of them as it grows.
+function buildNest(level) {
+  const g = new THREE.Group();
+  const mound = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62, 1), MATERIALS.mound);
+  mound.scale.set(1, 0.45, 1);
+  mound.position.y = 0.12;
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.1, 8), MATERIALS.moundDark);
+  hole.position.y = 0.38;
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 8), NEST_GLOW);
+  glow.position.y = 0.45;
+  g.add(mound, hole, glow);
+  for (let i = 0; i < 2 + level * 2; i++) {
+    const a = (i / (2 + level * 2)) * Math.PI * 2 + i;
+    const h = 0.25 + ((i * 37) % 10) / 25 + level * 0.04;
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, h, 5), MATERIALS.crystal);
+    const d = 0.3 + ((i * 13) % 5) / 25;
+    spike.position.set(Math.cos(a) * d, 0.25 + h / 2, Math.sin(a) * d);
+    spike.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+    g.add(spike);
+  }
+  g.traverse((o) => {
+    if (o.isMesh && o.material !== NEST_GLOW) o.castShadow = true;
+  });
+  g.userData.glow = glow;
+  return g;
+}
 
 function buildMonster(type) {
   const g = new THREE.Group();
@@ -204,6 +235,7 @@ export class Actors {
     this.scene = scene;
     this.units = new Map();
     this.monsters = new Map();
+    this.nests = new Map();
     this.shots = new Map();
     this.dying = [];
     this.rings = new THREE.Group();
@@ -352,6 +384,35 @@ export class Actors {
       if (!seenM.has(id)) {
         this.scene.remove(view.group);
         this.monsters.delete(id);
+      }
+    }
+
+    // Nests, once found.
+    const seenN = new Set();
+    for (const n of state.nests ?? []) {
+      if (!state.revealed.has(key(n.q, n.r))) continue;
+      seenN.add(n.id);
+      let view = this.nests.get(n.id);
+      if (!view || view.level !== n.level) {
+        if (view) this.scene.remove(view.group);
+        const group = buildNest(n.level);
+        group.scale.setScalar(1.1 + n.level * 0.1);
+        group.position.set(n.x, ground(n.x, n.z), n.z);
+        const bar = new HealthBar(0.7);
+        bar.group.position.y = 1.2;
+        group.add(bar.group);
+        this.scene.add(group);
+        view = { group, bar, level: n.level };
+        this.nests.set(n.id, view);
+      }
+      view.bar.set(n.hp / n.maxHp, camera);
+      const glow = view.group.userData.glow;
+      glow.scale.setScalar(1 + Math.sin(now * 2.5 + n.id) * 0.12);
+    }
+    for (const [id, view] of this.nests) {
+      if (!seenN.has(id)) {
+        this.nests.delete(id);
+        this.dying.push({ view, until: now + 0.8, shrink: true });
       }
     }
 

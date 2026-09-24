@@ -1,8 +1,8 @@
 // The HTML layer over the 3D view: resources along the top, and a panel at the bottom
 // for whatever is selected (a tile to build on, a building, units or a dungeon).
-import { BUILDINGS, BUILD_ORDER, GOALS, TRADE_AMOUNT, tradeGet, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
+import { BUILDINGS, BUILD_ORDER, GOALS, NEST_MAX_LEVEL, TRADE_AMOUNT, nestLoot, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
 import { parse } from './hex.js';
-import { buildProblem, canAfford, builders, constructionJobs, heroLevel, maxHp, partyChance, tradeProblem, waitingForBuilder, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
+import { buildProblem, waveOn, tradeAmount, canAfford, builders, constructionJobs, heroLevel, maxHp, partyChance, tradeProblem, waitingForBuilder, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
 import { tr } from './strings.js';
 import { TUTORIAL, tutorialStep } from './tutorial.js';
 
@@ -53,9 +53,9 @@ export class UI {
       ).join('') + `<span class="chip ${used >= people ? 'full' : ''}" title="${esc(tr('people'))}">${ICONS.people}<b>${used}/${people}</b></span>`;
     const w = state.wave;
     if (this.paused) this.wave.textContent = tr('paused');
-    else if (state.monsters.length) this.wave.textContent = tr('waveNow', { n: w.number });
+    else if (waveOn(state)) this.wave.textContent = tr('waveNow', { n: w.number });
     else this.wave.textContent = w.next < 180 || w.number > 0 ? tr('nextWave', { time: clock(w.next) }) : tr('quiet');
-    this.wave.classList.toggle('alarm', state.monsters.length > 0 || w.next < 30);
+    this.wave.classList.toggle('alarm', waveOn(state) || w.next < 30);
     // A boss gets its own health bar under the top bar.
     const boss = state.monsters.find((m) => m.type === 'titan');
     this.boss.hidden = !boss;
@@ -90,6 +90,7 @@ export class UI {
     else if (selection.kind === 'units') html = this.unitsPanel(state, selection.ids);
     else if (selection.kind === 'dungeon') html = this.dungeonPanel(state, state.dungeons.find((d) => d.key === selection.key));
     else if (selection.kind === 'goals') html = this.goalsPanel(state);
+    else if (selection.kind === 'nest') html = this.nestPanel(state, (state.nests ?? []).find((n) => n.id === selection.id));
     if (html !== this.lastPanel) {
       // Keep the horizontal scroll of card rows while the panel refreshes.
       const scroll = this.panel.querySelector('.cards')?.scrollLeft ?? 0;
@@ -156,7 +157,7 @@ export class UI {
       const cost = repairCost(b);
       actions += `<button class="btn primary ${canAfford(state, cost) ? '' : 'off'}" data-act="repair">${esc(tr('repair'))} ${costHtml(cost, state)}</button>`;
     } else if (def.fixed) {
-      lines.push(tr(def.gate ? 'gateInfo' : 'wallInfo'));
+      lines.push(tr(def.wonder ? `wonder_${b.type}` : def.gate ? 'gateInfo' : def.bridge ? 'bridgeInfo' : 'wallInfo'));
     } else if (b.level < 3) {
       const problem = upgradeProblem(state, b);
       actions += `<button class="btn primary ${problem ? 'off' : ''}" data-act="upgrade" data-problem="${problem ?? ''}">${esc(tr('upgrade'))} ${costHtml(upgradeCost(b.type, b.level + 1), state)}</button>`;
@@ -172,7 +173,7 @@ export class UI {
       train = `<div class="trade"><span>${esc(tr('give'))}</span><div class="chips">${chips('give', give)}</div>
         <span>${esc(tr('get'))}</span><div class="chips">${chips('get', get)}</div></div>
         <div class="row"><button class="btn primary ${problem ? 'off' : ''}" data-act="trade" data-problem="${problem ?? ''}">${esc(tr('trade'))}
-          <span class="cost">${ICONS[give]}${TRADE_AMOUNT}</span> → <span class="cost">${ICONS[get]}${give === get ? 0 : tradeGet(give, get, b.level)}</span></button></div>`;
+          <span class="cost">${ICONS[give]}${TRADE_AMOUNT}</span> → <span class="cost">${ICONS[get]}${give === get ? 0 : tradeAmount(state, b, give, get)}</span></button></div>`;
     }
     if (def.research && b.state !== 'destroyed') {
       const r = state.research ?? { weapons: 0, armour: 0 };
@@ -206,6 +207,17 @@ export class UI {
       return `<li class="${done.includes(g.id) ? 'done' : ''}"><span>${done.includes(g.id) ? '✓' : '○'}</span><b>${esc(tr(`g_${g.id}`))}</b>${reward}</li>`;
     }).join('');
     return this.head(esc(tr('goalsTitle', { n: done.length, max: GOALS.length }))) + `<ul class="goals">${rows}</ul>`;
+  }
+
+  nestPanel(state, nest) {
+    if (!nest) return this.idle(state);
+    const lines = [tr('hp', { hp: Math.ceil(nest.hp), max: nest.maxHp }), tr('nestInfo')];
+    if (nest.level < NEST_MAX_LEVEL) lines.push(tr('nestGrows', { s: clock(nest.grow) }));
+    const loot = Object.entries(nestLoot(nest.level)).map(([r, v]) => `<span class="cost">${ICONS[r]}${v}</span>`).join(' ');
+    const free = state.units.filter((u) => u.state !== 'away').length;
+    return this.head(`${esc(tr('nestName'))} <span class="lvl">${esc(tr('level', { n: nest.level }))}</span>`) +
+      `<ul class="lines">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}<li>${esc(tr('nestLoot'))} ${loot}</li></ul>` +
+      `<div class="row">${free ? `<button class="btn primary" data-act="attack-nest">${esc(tr('attackNest', { n: free }))}</button>` : `<p class="hint">${esc(tr('noIdle'))}</p>`}</div>`;
   }
 
   unitsPanel(state, ids) {
@@ -267,6 +279,8 @@ export class UI {
         return problem ? this.toast(tr(problem), 'warn') : h.onResearch(el.dataset.track);
       case 'army':
         return h.onSelectAll();
+      case 'attack-nest':
+        return h.onAttackNest();
       case 'new':
         return h.onNewGame();
       case 'pick': {
