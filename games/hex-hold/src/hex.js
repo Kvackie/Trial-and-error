@@ -37,7 +37,8 @@ function round(q, r) {
   return [rq + 0, rr + 0];
 }
 
-// Every hex within `radius` of (q, r).
+// Every hex within `radius` of (q, r). (The island generator depends on this order,
+// so keep it; use `around` for nearest first.)
 export function spiral(q, r, radius) {
   const out = [];
   for (let dq = -radius; dq <= radius; dq++) {
@@ -45,6 +46,9 @@ export function spiral(q, r, radius) {
   }
   return out;
 }
+
+// Every hex within radius of (q, r), nearest first.
+export const around = (q, r, radius) => spiral(q, r, radius).sort((a, b) => distance(a, [q, r]) - distance(b, [q, r]));
 
 // A* over hexes. cost(q, r) returns the cost of entering a hex, or Infinity.
 // Returns the path as [q, r] pairs from the hex after `from` up to `to`, or null.

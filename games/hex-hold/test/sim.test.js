@@ -335,3 +335,81 @@ test('a fallen castle rebuilds itself for free, and units can be sent home', asy
   assert.equal(dismiss(state, [700]), 1);
   assert.equal(population(state).used, used - 1);
 });
+
+// Hex-rule combat helpers.
+const hexAt = (a) => fromWorld(a.x, a.z);
+function arena(seed = 91) {
+  const state = newGame(seed);
+  state.wave.next = 1e9;
+  state.nests = [];
+  for (const t of state.tiles.values()) state.revealed.add(key(t.q, t.r));
+  const open = [...state.tiles.values()].filter((t) => t.terrain === 'grass' && !t.islet && distance([t.q, t.r], [0, 0]) >= 3 && distance([t.q, t.r], [0, 0]) <= 6);
+  return { state, open };
+}
+const knight = (state, id, [q, r]) => {
+  const { x, z } = toWorld(q, r);
+  const u = { id, type: 'knight', name: 'K', xp: 0, x, z, hp: 150, state: 'idle', path: [], cooldown: 0, target: null, post: [q, r] };
+  state.units.push(u);
+  return u;
+};
+const slime = (state, id, [q, r], hp = 45) => {
+  const { x, z } = toWorld(q, r);
+  const m = { id, type: 'slime', x, z, hp, maxHp: hp, path: [], cooldown: 1, target: null, strength: 1 };
+  state.monsters.push(m);
+  return m;
+};
+
+test('melee happens across a hex side, never on the same hex, and hits back', () => {
+  const { state, open } = arena();
+  const start = open[0];
+  const far = open.find((t) => distance([t.q, t.r], [start.q, start.r]) === 3);
+  const u = knight(state, 900, [start.q, start.r]);
+  const m = slime(state, 901, [far.q, far.r], 400);
+  let shared = false;
+  let adjacentFight = false;
+  for (let t = 0; t < 30 && state.monsters.length; t += 0.25) {
+    const events = tick(state, 0.25);
+    if (state.monsters.length && distance(hexAt(u), hexAt(m)) === 0) shared = true;
+    if (events.some((e) => e.type === 'attack' && e.actor === u) && distance(hexAt(u), hexAt(m)) === 1) adjacentFight = true;
+  }
+  assert.equal(shared, false, 'never on the same hex');
+  assert.ok(adjacentFight, 'fought from the next hex');
+  assert.ok(u.hp < 150, 'the slime hit back or attacked');
+});
+
+test('one unit per hex: a group sent to one hex spreads over the hexes around it', async () => {
+  const { moveUnits } = await import('../src/sim.js');
+  const { state, open } = arena(92);
+  const units = open.slice(0, 5).map((t, i) => knight(state, 950 + i, [t.q, t.r]));
+  const goal = open[8];
+  moveUnits(state, units.map((u) => u.id), goal.q, goal.r);
+  run(state, 30);
+  const spots = new Set(units.map((u) => key(...hexAt(u))));
+  assert.equal(spots.size, units.length);
+  assert.ok(units.some((u) => key(...hexAt(u)) === key(goal.q, goal.r)));
+});
+
+test('units ignore monsters in the dark and never walk into buildings as monsters do', () => {
+  const { state, open } = arena(93);
+  const start = open[0];
+  const near = [...state.tiles.values()].find((t) => ['grass', 'forest', 'hills'].includes(t.terrain) && distance([t.q, t.r], [start.q, start.r]) === 3);
+  const u = knight(state, 960, [start.q, start.r]);
+  state.revealed.delete(key(near.q, near.r));
+  const m = slime(state, 961, [near.q, near.r]);
+  tick(state, 0.25);
+  assert.equal(u.target, null, 'no chasing into the dark');
+  state.revealed.add(key(near.q, near.r));
+  m.x = toWorld(near.q, near.r).x;
+  m.z = toWorld(near.q, near.r).z;
+  tick(state, 0.25);
+  assert.equal(u.target, m, 'but it goes for one it can see');
+
+  // A monster heading for the castle stops beside buildings, never on one.
+  const { state: s2, open: o2 } = arena(94);
+  const m2 = slime(s2, 970, [o2[3].q, o2[3].r], 5000);
+  for (let t = 0; t < 40; t += 0.25) {
+    tick(s2, 0.25);
+    const b = s2.buildings.find((x) => key(x.q, x.r) === key(...hexAt(m2)));
+    assert.ok(!b || b.state === 'destroyed', 'monster on a building hex');
+  }
+});

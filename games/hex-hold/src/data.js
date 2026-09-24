@@ -63,6 +63,9 @@ export const ATTACK_COOLDOWN = 1.2;
 export const UPKEEP = 0.07; // food each unit eats per second
 export const SIEGE = 0.5; // share of a monster's damage that buildings take
 export const AGGRO_RANGE = 3;
+export const LEASH = 4; // hexes a unit will chase from where it was sent
+export const RETALIATE = 0.35; // share of its damage a melee fighter hits back with
+export const COVER = { rough: 0.8, building: 0.7 }; // damage taken on forest/hills, and by units on their buildings
 export const UNIT_REVEAL = 2;
 
 export const MONSTERS = {

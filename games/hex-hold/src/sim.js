@@ -3,6 +3,9 @@
 // tick() reports; the UI calls the actions (build, upgrade, train, move, send).
 import {
   AGGRO_RANGE,
+  COVER,
+  LEASH,
+  RETALIATE,
   ATTACK_COOLDOWN,
   BUILD_RANGE,
   BUILDINGS,
@@ -54,7 +57,7 @@ import {
   WONDER_CASTLE,
 } from './data.js';
 import { advanceTutorial } from './tutorial.js';
-import { distance, findPath, fromWorld, key, neighbours, parse, spiral, toWorld } from './hex.js';
+import { around, distance, findPath, fromWorld, key, neighbours, parse, spiral, toWorld } from './hex.js';
 import { RADIUS, WORLD_VERSION, generateWorld, isPassable, isWet, seeded } from './world.js';
 
 // --- Creating, saving and loading ----------------------------------------------------
@@ -383,36 +386,49 @@ export function train(state, b, unit) {
   return true;
 }
 
-// Walls block monsters and units; gates only block monsters. Ruined walls block nobody.
+// Units walk through their own buildings (not walls; gates yes). Monsters can't enter
+// buildings at all: they have to break them down. Ruins block nobody.
 const passCost = (state, monster = false) => (q, r) => {
   const b = buildingAt(state, q, r);
   if (b && BUILDINGS[b.type].bridge) return b.state === 'ready' ? 1 : Infinity;
   if (!isPassable(tileAt(state, q, r))) return Infinity;
   const def = b && b.state !== 'destroyed' && BUILDINGS[b.type];
-  if (def?.wall && (monster || !def.gate)) return Infinity;
+  if (def && monster) return Infinity;
+  if (def?.wall && !def.gate) return Infinity;
   return 1;
 };
 
 // Orders units to walk to a hex (they fight whatever they meet on the way).
 export const canWalk = (state, q, r) => Number.isFinite(passCost(state)(q, r));
 
+// Each unit gets its own hex: the one tapped for the first, free hexes around it for
+// the rest (one unit per hex).
 export function moveUnits(state, ids, q, r) {
+  if (!canWalk(state, q, r)) return 0;
   let moved = 0;
-  const targets = [[q, r], ...spiral(q, r, 2).filter(([a, b]) => a !== q || b !== r)];
-  ids.forEach((id, i) => {
-    const u = state.units.find((x) => x.id === id);
-    if (!u || u.state === 'away') return;
-    const goal = targets[i % targets.length];
-    if (!Number.isFinite(passCost(state)(...goal))) return;
-    const path = findPath(fromWorld(u.x, u.z), goal, passCost(state));
+  const cost = passCost(state);
+  // Nearest first, so the front of the group takes the hexes nearest the goal.
+  const movers = ids
+    .map((id) => state.units.find((x) => x.id === id))
+    .filter((u) => u && u.state !== 'away')
+    .sort((a, b) => distance(fromWorld(a.x, a.z), [q, r]) - distance(fromWorld(b.x, b.z), [q, r]));
+  const taken = new Set(
+    [...state.units.filter((u) => !movers.includes(u) && u.state !== 'away'), ...state.monsters, ...(state.nests ?? [])].map((a) => key(...fromWorld(a.x, a.z))),
+  );
+  const spots = around(q, r, 3).filter(([a, b]) => Number.isFinite(cost(a, b)) && !taken.has(key(a, b)));
+  for (const u of movers) {
+    const goal = spots.shift();
+    if (!goal) break;
+    const path = findPath(fromWorld(u.x, u.z), goal, cost);
     if (path) {
       stat(state).moves = (stat(state).moves ?? 0) + 1;
       u.path = path;
       u.order = true;
       u.target = null;
+      u.post = goal;
       moved++;
     }
-  });
+  }
   return moved;
 }
 
@@ -459,10 +475,10 @@ export function reveal(state, q, r, radius) {
 }
 
 function spawnUnit(state, b, type, events) {
-  const spot = [[b.q, b.r], ...spiral(b.q, b.r, 2)].find(([q, r]) => isPassable(tileAt(state, q, r)) && !buildingAt(state, q, r)) ?? [b.q, b.r];
+  const spot = freeHexNear(state, b.q, b.r) ?? [b.q, b.r];
   const { x, z } = toWorld(...spot);
   const name = HERO_NAMES[(state.nextId * 7 + state.units.length * 3) % HERO_NAMES.length];
-  const u = { id: state.nextId++, type, name, xp: 0, x, z, hp: 0, state: 'idle', path: [], cooldown: 0, target: null };
+  const u = { id: state.nextId++, type, name, xp: 0, x, z, hp: 0, state: 'idle', path: [], cooldown: 0, target: null, post: spot };
   u.hp = maxHp(state, u);
   state.units.push(u);
   events.push({ type: 'trained', unit: u });
@@ -547,7 +563,6 @@ function finishDungeon(state, d, events, rng = Math.random) {
   const won = rng() < chance;
   const lost = [];
   const [q, r] = parse(d.key);
-  const exit = toWorld(q, r);
   for (const u of party) {
     if (!won && rng() < 0.5) {
       lost.push(u);
@@ -556,8 +571,11 @@ function finishDungeon(state, d, events, rng = Math.random) {
     u.state = 'idle';
     giveXp(state, u, Math.round(DUNGEON_XP * d.tier * (won ? 1 : 1 / 3)), events);
     u.hp = won ? maxHp(state, u) : Math.ceil(maxHp(state, u) * 0.3);
-    u.x = exit.x;
-    u.z = exit.z;
+    // Out of the doorway, each onto a hex of its own.
+    const spot = freeHexNear(state, q, r) ?? [q, r];
+    ({ x: u.x, z: u.z } = toWorld(...spot));
+    u.post = spot;
+    u.path = [];
   }
   state.units = state.units.filter((u) => !lost.includes(u));
   let loot = null;
@@ -613,7 +631,9 @@ function spawnWave(state, events) {
 const canMonsterStand = (state, q, r) => isPassable(tileAt(state, q, r)) && !buildingAt(state, q, r);
 
 function addMonster(state, type, [q, r], strength, extra = {}) {
-  const { x, z } = toWorld(q, r);
+  // Its own hex, as close to the spot as there is room.
+  const spot = freeHexNear(state, q, r, { monster: true }) ?? [q, r];
+  const { x, z } = toWorld(...spot);
   const hp = Math.round(MONSTERS[type].hp * strength);
   const m = { id: state.nextId++, type, x, z, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength, ...extra };
   state.monsters.push(m);
@@ -693,6 +713,7 @@ const hit = (state, target, amount, events, by) => (target.nest ? hitNest(state,
 const hexOf = (a) => fromWorld(a.x, a.z);
 const hexDist = (a, b) => distance(hexOf(a), hexOf(b));
 const worldDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / 2; // in hexes
+const alive = (a) => !a.dead && a.hp > 0;
 
 // Actors stand in the middle of hexes; these help them finish a step before stopping.
 const centreOf = (a) => toWorld(...hexOf(a));
@@ -700,22 +721,64 @@ const atCentre = (a) => {
   const c = centreOf(a);
   return Math.hypot(a.x - c.x, a.z - c.z) < 0.01;
 };
-function settle(a, speed, dt) {
-  // Keep going to the hex it was heading for, or back to the nearest middle.
-  a.path = a.path.length ? a.path.slice(0, 1) : [hexOf(a)];
-  walk(null, a, speed, dt);
+
+// One actor per hex, as in Civilization: who stands on each hex, or is stepping
+// into it. Rebuilt every tick and updated as actors set off.
+function occupancy(state) {
+  const occ = new Map();
+  const claim = (k, a) => {
+    if (!occ.has(k)) occ.set(k, a);
+  };
+  for (const a of [...state.units.filter((u) => u.state !== 'away'), ...state.monsters]) {
+    if (!alive(a)) continue;
+    claim(key(...hexOf(a)), a);
+    if (a.path.length && !atCentre(a)) claim(key(...a.path[0]), a);
+  }
+  return occ;
 }
 
-// Moves an actor along its path, from hex middle to hex middle. Returns true while it is still walking.
-function walk(_state, actor, speed, dt) {
+// A free hex near (q, r) where a unit or monster may stand.
+function freeHexNear(state, q, r, { monster = false, occ = occupancy(state) } = {}) {
+  const cost = passCost(state, monster);
+  return around(q, r, 4).find(([a, b]) => Number.isFinite(cost(a, b)) && !occ.has(key(a, b))) ?? null;
+}
+
+// Path cost that steers round hexes other actors stand on.
+const crowdCost = (state, a, occ, monster) => {
+  const base = passCost(state, monster);
+  return (q, r) => {
+    const other = occ.get(key(q, r));
+    return base(q, r) + (other && other !== a ? 6 : 0);
+  };
+};
+
+function settle(a, speed, dt, occ) {
+  // Keep going to the hex it was heading for, or back to the nearest middle.
+  a.path = a.path.length ? a.path.slice(0, 1) : [hexOf(a)];
+  walk(a, speed, dt, occ);
+}
+
+// Moves an actor along its path, from hex middle to hex middle. It only sets off into
+// a hex nobody else is on or stepping into; otherwise it waits (a.blocked counts how long).
+function walk(actor, speed, dt, occ) {
   if (!actor.path.length) return false;
   const [q, r] = actor.path[0];
+  const k = key(q, r);
+  if (occ && atCentre(actor) && k !== key(...hexOf(actor))) {
+    const other = occ.get(k);
+    if (other && other !== actor) {
+      actor.blocked = (actor.blocked ?? 0) + dt;
+      return false;
+    }
+    occ.set(k, actor);
+  }
+  actor.blocked = 0;
   const goal = toWorld(q, r);
   const dx = goal.x - actor.x;
   const dz = goal.z - actor.z;
   const len = Math.hypot(dx, dz);
   const step = speed * 2 * dt;
-  actor.heading = Math.atan2(dx, dz);
+  if (len > 0.001) actor.heading = Math.atan2(dx, dz);
   if (len <= step) {
     actor.x = goal.x;
     actor.z = goal.z;
@@ -725,6 +788,22 @@ function walk(_state, actor, speed, dt) {
     actor.z += (dz / len) * step;
   }
   return true;
+}
+
+// A path to the hex next to a target (it stops one short, as melee happens across a hex side).
+function pathNextTo(from, to, cost, limit) {
+  const path = findPath(from, to, cost, limit);
+  if (path) path.pop();
+  return path;
+}
+
+// Cover: less damage on forest and hills, and for units standing on their own buildings.
+function cover(state, a, unit) {
+  const [q, r] = hexOf(a);
+  const b = unit && buildingAt(state, q, r);
+  if (b && b.state !== 'destroyed' && !BUILDINGS[b.type].bridge) return COVER.building;
+  const terrain = tileAt(state, q, r)?.terrain;
+  return terrain === 'forest' || terrain === 'hills' ? COVER.rough : 1;
 }
 
 function damageBuilding(state, b, amount, events) {
@@ -740,7 +819,7 @@ function damageBuilding(state, b, amount, events) {
 }
 
 function hitMonster(state, m, amount, events, by = null) {
-  m.hp -= amount;
+  m.hp -= amount * cover(state, m, false);
   if (m.hp <= 0 && !m.dead) {
     m.dead = true;
     addResources(state, { gold: MONSTERS[m.type].bounty });
@@ -753,26 +832,54 @@ function hitMonster(state, m, amount, events, by = null) {
   }
 }
 
-function combat(state, dt, events) {
-  const alive = (a) => !a.dead && a.hp > 0;
-  const buildingTargets = state.buildings.filter((b) => b.state !== 'destroyed');
+function hurtUnit(state, u, amount, events) {
+  u.hp -= amount * cover(state, u, true);
+  events.push({ type: 'hurt', unit: u });
+  if (u.hp <= 0 && !u.dead) {
+    u.dead = true;
+    events.push({ type: 'unitDied', unit: u });
+    state.units = state.units.filter((x) => x !== u);
+  }
+}
 
-  // Monsters: go for a nearby defender, otherwise the nearest building.
+const monsterDamage = (m) => Math.round(MONSTERS[m.type].damage * m.strength);
+
+// Old saves and crowded spawns can leave two actors on one hex: the idle one steps aside.
+function unstack(state, occ) {
+  for (const a of [...state.units.filter((u) => u.state !== 'away'), ...state.monsters]) {
+    if (!alive(a) || a.path.length || !atCentre(a)) continue;
+    const k = key(...hexOf(a));
+    if (occ.get(k) === a) continue;
+    const spot = freeHexNear(state, ...hexOf(a), { monster: !!MONSTERS[a.type], occ });
+    if (spot) {
+      a.path = [spot];
+      occ.set(key(...spot), a);
+    }
+  }
+}
+
+function combat(state, dt, events) {
+  const buildingTargets = state.buildings.filter((b) => b.state !== 'destroyed');
+  const occ = occupancy(state);
+  unstack(state, occ);
+
+  // Monsters: go for a defender close by, otherwise the nearest building. They attack
+  // from the next hex over, and can't walk through buildings (they break in instead).
   for (const m of state.monsters) {
     if (!alive(m)) continue;
     const def = MONSTERS[m.type];
     m.cooldown -= dt;
     const units = state.units.filter((u) => u.state !== 'away' && alive(u));
-    const nearUnit = units.filter((u) => worldDist(u, m) <= 2.5).sort((a, b) => worldDist(a, m) - worldDist(b, m))[0];
+    const nearUnit = units.filter((u) => hexDist(u, m) <= 2).sort((a, b) => hexDist(a, m) - hexDist(b, m))[0];
     const siege = m.siege && buildingTargets.find((b) => b.id === m.siege);
     if (!siege) m.siege = null;
-    let target = siege ? { kind: 'wall', ref: siege } : nearUnit ? { kind: 'unit', ref: nearUnit } : null;
+    let target = siege ? { kind: 'building', ref: siege } : nearUnit ? { kind: 'unit', ref: nearUnit } : null;
     if (!target && m.guard && state.nests.some((n) => n.id === m.guard)) {
       // A guard with nobody to chase goes back to its nest.
       const nest = state.nests.find((n) => n.id === m.guard);
-      if (hexDist(m, nest) > 1 && atCentre(m) && !m.path.length) m.path = findPath(hexOf(m), [nest.q, nest.r], passCost(state, true), 400) ?? [];
-      if (m.path.length) walk(state, m, def.speed, dt);
-      else settle(m, def.speed, dt);
+      if (hexDist(m, nest) > 1 && atCentre(m) && !m.path.length) m.path = pathNextTo(hexOf(m), [nest.q, nest.r], crowdCost(state, m, occ, true), 400) ?? [];
+      if (m.path.length) walk(m, def.speed, dt, occ);
+      else settle(m, def.speed, dt, occ);
       continue;
     }
     if (!target && buildingTargets.length) {
@@ -780,62 +887,71 @@ function combat(state, dt, events) {
       target = { kind: 'building', ref: b };
     }
     if (!target) {
-      settle(m, def.speed, dt);
+      settle(m, def.speed, dt, occ);
       continue;
     }
     const goal = target.kind === 'unit' ? hexOf(target.ref) : [target.ref.q, target.ref.r];
-    const inReach = distance(hexOf(m), goal) <= (target.kind === 'unit' ? def.range : 1);
-    if (inReach && atCentre(m)) {
+    const gap = distance(hexOf(m), goal);
+    if (gap === 1 && atCentre(m)) {
       m.path = [];
       const pos = toWorld(...goal);
       m.heading = Math.atan2(pos.x - m.x, pos.z - m.z);
       if (m.cooldown <= 0) {
         m.cooldown = ATTACK_COOLDOWN * 1.3;
-        const dmg = Math.round(def.damage * m.strength);
         events.push({ type: 'attack', actor: m, monster: true, building: target.kind === 'unit' ? null : target.ref });
-        if (target.kind === 'unit') hurtUnit(state, target.ref, dmg, events);
-        else damageBuilding(state, target.ref, dmg, events);
+        if (target.kind === 'unit') {
+          const u = target.ref;
+          hurtUnit(state, u, monsterDamage(m), events);
+          // A melee unit hits back.
+          if (alive(u) && UNITS[u.type].range === 1) {
+            events.push({ type: 'attack', actor: u });
+            hitMonster(state, m, damageOf(state, u) * RETALIATE, events, u.id);
+          }
+        } else damageBuilding(state, target.ref, monsterDamage(m), events);
       }
-    } else if (inReach) {
-      settle(m, def.speed, dt);
+    } else if (gap === 1) {
+      settle(m, def.speed, dt, occ);
     } else {
       const last = m.path.at(-1);
-      if ((!last || m.repath <= 0) && atCentre(m)) {
-        const path = findPath(hexOf(m), goal, passCost(state, true), 800);
-        if (!path && target.kind !== 'wall') {
-          // Walled off: go and break down the nearest wall or gate instead.
-          const walls = buildingTargets.filter((b) => BUILDINGS[b.type].wall);
-          if (walls.length) m.siege = walls.reduce((best, o) => (distance([o.q, o.r], hexOf(m)) < distance([best.q, best.r], hexOf(m)) ? o : best)).id;
+      const repath = !last || m.repath <= 0 || (m.blocked ?? 0) > 0.6;
+      if (repath && atCentre(m)) {
+        const path = pathNextTo(hexOf(m), goal, crowdCost(state, m, occ, true), 800);
+        if (!path && target.kind === 'building') {
+          // Shut out: break into whatever building is nearest instead.
+          const near = buildingTargets.filter((b) => b !== target.ref).sort((a, b) => distance([a.q, a.r], hexOf(m)) - distance([b.q, b.r], hexOf(m)))[0];
+          if (near) m.siege = near.id;
         }
         m.path = path ?? [];
         m.repath = 1.5;
-        if (target.kind !== 'unit' && m.path.length) m.path.pop(); // stop next to it
+        m.blocked = 0;
       }
       m.repath -= dt;
-      if (m.path.length) walk(state, m, def.speed, dt);
-      else settle(m, def.speed, dt);
+      if (m.path.length) walk(m, def.speed, dt, occ);
+      else settle(m, def.speed, dt, occ);
     }
   }
 
-  // Units: follow orders; when free, fight monsters that come close. Like monsters,
-  // they only ever stop in the middle of a hex.
+  // Units: follow orders; when free, fight monsters they can see near their post (where
+  // they were last sent), but never chase them far away or into the dark.
   for (const u of state.units) {
     if (u.state === 'away' || !alive(u)) continue;
     const def = UNITS[u.type];
     u.cooldown -= dt;
-    const monsters = state.monsters.filter(alive);
-    let foe = u.target && alive(u.target) ? u.target : null;
-    if (!foe && (!u.order || !u.path.length)) {
-      foe = monsters.filter((m) => worldDist(m, u) <= AGGRO_RANGE).sort((a, b) => worldDist(a, u) - worldDist(b, u))[0] ?? null;
-      // Nothing to fight: go for a nest close by.
-      foe ??= (state.nests ?? []).filter((n) => alive(n) && hexDist(n, u) <= AGGRO_RANGE).sort((a, b) => hexDist(a, u) - hexDist(b, u))[0] ?? null;
+    const post = u.post ?? hexOf(u);
+    const seen = (a) => state.revealed.has(key(...hexOf(a)));
+    const nearPost = (a) => distance(hexOf(a), post) <= LEASH;
+    let foe = u.target && alive(u.target) && nearPost(u.target) ? u.target : null;
+    if (!foe && !u.order) {
+      const close = (list) => list.filter((a) => alive(a) && seen(a) && hexDist(a, u) <= AGGRO_RANGE && nearPost(a)).sort((a, b) => hexDist(a, u) - hexDist(b, u))[0] ?? null;
+      foe = close(state.monsters) ?? close(state.nests ?? []);
     }
     u.target = foe;
-    const inReach = foe && distance(hexOf(u), hexOf(foe)) <= def.range;
+    const gap = foe ? hexDist(u, foe) : Infinity;
+    const inReach = gap >= 1 && gap <= def.range;
     if (foe && inReach && !u.order) {
       if (!atCentre(u)) {
         u.state = 'moving';
-        settle(u, def.speed, dt);
+        settle(u, def.speed, dt, occ);
         continue;
       }
       u.path = [];
@@ -848,26 +964,47 @@ function combat(state, dt, events) {
           state.shots.push({ kind: def.shoots, from: { x: u.x, z: u.z }, to: foe, t: 0, damage: damageOf(state, u), splash: def.splash ?? 0, by: u.id });
         } else {
           hit(state, foe, damageOf(state, u), events, u.id);
+          // A melee monster hits back.
+          if (!foe.nest && alive(foe) && MONSTERS[foe.type].range === 1) {
+            events.push({ type: 'attack', actor: foe, monster: true, building: null });
+            hurtUnit(state, u, monsterDamage(foe) * RETALIATE, events);
+          }
         }
       }
     } else if (foe && !u.order) {
+      // Close in, to the nearest hex it can hit from.
       u.state = 'moving';
-      if ((!u.path.length || u.repath <= 0) && atCentre(u)) {
-        u.path = findPath(hexOf(u), hexOf(foe), passCost(state), 600) ?? [];
+      const repath = !u.path.length || u.repath <= 0 || (u.blocked ?? 0) > 0.6;
+      if (repath && atCentre(u)) {
+        const path = def.range > 1 && gap === 0 ? [freeHexNear(state, ...hexOf(u), { occ }) ?? hexOf(u)] : pathNextTo(hexOf(u), hexOf(foe), crowdCost(state, u, occ, false), 600);
+        u.path = path ?? [];
         u.repath = 1;
+        u.blocked = 0;
       }
       u.repath -= dt;
-      if (u.path.length) walk(state, u, def.speed, dt);
-      else settle(u, def.speed, dt);
+      if (u.path.length) walk(u, def.speed, dt, occ);
+      else settle(u, def.speed, dt, occ);
     } else if (u.path.length) {
       u.state = 'moving';
-      walk(state, u, def.speed, dt);
+      // Held up behind someone: find a way round, or stop at the nearest free hex.
+      if ((u.blocked ?? 0) > 0.8 && atCentre(u)) {
+        const end = u.path.at(-1);
+        const taken = occ.get(key(...end));
+        const goal = taken && taken !== u && !taken.path?.length ? freeHexNear(state, ...end, { occ }) : end;
+        u.path = (goal && findPath(hexOf(u), goal, crowdCost(state, u, occ, false), 600)) ?? [];
+        u.blocked = 0;
+        if (goal) u.post = goal;
+      }
+      walk(u, def.speed, dt, occ);
       if (!u.path.length) u.order = false;
     } else if (!atCentre(u)) {
       u.state = 'moving';
-      settle(u, def.speed, dt);
+      settle(u, def.speed, dt, occ);
     } else {
       u.state = 'idle';
+      u.order = false;
+      // Chased too far: walk back to its post.
+      if (distance(hexOf(u), post) > LEASH) u.path = findPath(hexOf(u), post, crowdCost(state, u, occ, false), 600) ?? [];
     }
     const [q, r] = hexOf(u);
     if (reveal(state, q, r, def.reveal ?? UNIT_REVEAL)) events.push({ type: 'revealed' });
@@ -901,16 +1038,6 @@ function combat(state, dt, events) {
   }
   state.shots = state.shots.filter((s) => !s.done);
   state.monsters = state.monsters.filter((m) => !m.dead);
-}
-
-function hurtUnit(state, u, amount, events) {
-  u.hp -= amount;
-  events.push({ type: 'hurt', unit: u });
-  if (u.hp <= 0 && !u.dead) {
-    u.dead = true;
-    events.push({ type: 'unitDied', unit: u });
-    state.units = state.units.filter((x) => x !== u);
-  }
 }
 
 // Advances the game by dt seconds of play. Returns what happened, for the view.

@@ -1,6 +1,6 @@
 // Units (animated KayKit heroes), monsters (built in code) and what they shoot.
 import * as THREE from 'three';
-import { UNITS, MONSTERS } from '../data.js';
+import { BUILDINGS, UNITS, MONSTERS } from '../data.js';
 import { hero, heroClips } from './assets.js';
 import { heroLevel, maxHp } from '../sim.js';
 import { fromWorld, key } from '../hex.js';
@@ -333,7 +333,16 @@ export class Actors {
         if (this.pendingCheer === u.id) view.once('cheer', now);
       }
       view.group.visible = u.state !== 'away';
-      const at = spot.get(u) ?? { x: u.x, z: u.z };
+      let at = spot.get(u) ?? { x: u.x, z: u.z };
+      // On one of your buildings: stand at its front edge (facing the camera), not inside it.
+      const [hq, hr] = fromWorld(u.x, u.z);
+      const b = state.buildings.find((x) => x.q === hq && x.r === hr);
+      if (b && b.state !== 'destroyed' && !BUILDINGS[b.type].bridge) {
+        const dx = camera.position.x - u.x;
+        const dz = camera.position.z - u.z;
+        const d = Math.hypot(dx, dz) || 1;
+        at = { x: at.x + (dx / d) * 0.68, z: at.z + (dz / d) * 0.68 };
+      }
       if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, ground(u.x, u.z), at.z), follow);
       else view.group.position.set(at.x, ground(u.x, u.z), at.z);
       view.placed = true;
