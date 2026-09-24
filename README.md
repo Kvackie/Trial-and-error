@@ -2,19 +2,23 @@
 
 A collection of small mobile games built with [Phaser](https://phaser.io/) (2D) and [Three.js](https://threejs.org/) (3D). Each game lives in its own folder and is built and published on its own. Every game can be played in the browser (GitHub Pages) and installed as an Android app (wrapped with [Capacitor](https://capacitorjs.com/)).
 
-- Hub page: `https://kvackie.github.io/Trial-and-error/`
-- One game: `https://kvackie.github.io/Trial-and-error/<game>/`
+**Play: [kvackie.github.io/Trial-and-error](https://kvackie.github.io/Trial-and-error/)** (the hub, with every game). Each game
+also has its own address, `https://kvackie.github.io/Trial-and-error/<game>/`, linked in the table below.
 
 All games are **mobile first, desktop second**: designed for a phone held upright and played by touch, then checked on desktop. The rules every game follows (and that coding agents working here must follow) are in [AGENTS.md](AGENTS.md).
 
 ## Games
 
-| Game (Swedish name) | Folder | What it is |
-|---|---|---|
-| Block Drop (Blockfall) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
-| Potion Match (Trolldrycker) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
-| Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
-| Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
+| Game (Swedish name) | Play | Folder | What it is |
+|---|---|---|---|
+| Block Drop (Blockfall) | [Play](https://kvackie.github.io/Trial-and-error/block-drop/) | `games/block-drop/` | Falling-blocks puzzle, played with four on-screen buttons. |
+| Potion Match (Trolldrycker) | [Play](https://kvackie.github.io/Trial-and-error/potion-match/) | `games/potion-match/` | Match-three with potion art from Eternal Alchemy. Matches are free, misses cost a move. |
+| Lantern Maze (Lyktlabyrinten) | [Play](https://kvackie.github.io/Trial-and-error/lantern-maze/) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
+| Hex Hold (Hexfästet) | [Play](https://kvackie.github.io/Trial-and-error/hex-hold/) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town, raise wonders, and hold out against monster waves and titans that pour out of growing nests. Tutorial, builder queue, speed control and attack alerts. Real time; the town keeps producing for up to 8 hours while closed. |
+
+The hub also links to the owner's games in other repos:
+[Eternal Alchemy](https://kvackie.github.io/eternal-alchemy/) and
+[Dark Fantasy Settlement](https://kvackie.github.io/dark-fantasy-management/).
 
 Every 2D game has the same frame around it (3D games choose their own, see [Add a 3D game](#add-a-3d-game)):
 
