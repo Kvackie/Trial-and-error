@@ -53,6 +53,7 @@ export class Terrain {
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -0.35;
     scene.add(sea);
+    this.sea = sea;
     // Earth under the grass: a hex column one unit tall with its top at y = 0,
     // stretched down to the floor for each hex.
     this.cliffGeometry = new THREE.CylinderGeometry(SIZE * 0.995, SIZE * 0.995, 1, 6).translate(0, -0.5, 0);

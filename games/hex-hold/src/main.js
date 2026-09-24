@@ -18,6 +18,8 @@ import { hero, loadAssets, model, thumbnails } from './view/assets.js';
 import { FOG_COLOUR, Terrain } from './view/terrain.js';
 import { Town } from './view/town.js';
 import { Actors } from './view/actors.js';
+import { Sky } from './view/sky.js';
+import { Villagers } from './view/villagers.js';
 
 const SAVE_KEY = 'hex-hold:save';
 const canvas = document.querySelector('#game');
@@ -33,7 +35,8 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(FOG_COLOUR);
 scene.fog = new THREE.Fog(FOG_COLOUR, 30, 60);
-scene.add(new THREE.HemisphereLight(0xd8e6ff, 0x4a5a48, 1.1));
+const hemi = new THREE.HemisphereLight(0xd8e6ff, 0x4a5a48, 1.1);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff4e6, 1.5);
 sun.position.set(12, 20, 8);
 sun.castShadow = true;
@@ -102,6 +105,8 @@ let terrainKey = '';
 const terrain = new Terrain(scene);
 const town = new Town(scene);
 const actors = new Actors(scene);
+const villagers = new Villagers(scene);
+let sky = null; // made once the models have loaded
 
 function save() {
   state.savedAt = Date.now();
@@ -407,7 +412,9 @@ function frame() {
     terrainKey = signature;
     terrain.update(state);
   }
-  town.update(state, camera);
+  sky?.update(state, dt, controls.target, camera);
+  town.update(state, camera, sky?.night ?? 0, now);
+  villagers.update(state, dt, sky?.night ?? 0);
   actors.update(state, dt, now, camera, selection?.kind === 'units' ? selection.ids : []);
   if (flagTime > 0) {
     flagTime -= dt;
@@ -466,6 +473,7 @@ async function start() {
   for (const type of Object.keys(BUILDINGS)) pictures[`b_${type}`] = model(BUILDINGS[type].model);
   for (const [type, def] of Object.entries(UNITS)) pictures[`u_${type}`] = hero(type, def.weapons);
   ui.thumbs = thumbnails(pictures);
+  sky = new Sky(scene, { sun, hemi, sea: terrain.sea });
 
   state = load();
   if (state) {

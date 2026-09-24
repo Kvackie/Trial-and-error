@@ -16,7 +16,7 @@ All games are **mobile first, desktop second**: designed for a phone held uprigh
 | Lantern Maze (Lyktlabyrinten) | `games/lantern-maze/` | Ever-growing mazes lit only by your lantern. Dead ends hold arithmetic puzzles; checkpoints every 5 levels. |
 | Wild Pond (Vilda dammen) | `games/wild-pond/` | Breed drawn-in-code pond creatures to discover rare features, and trade them with other players through a shared online pond. |
 | Potion Market (Trolldrycksmarknaden) | `games/potion-market/` | Brew potions by balancing five essences (art and recipes from Eternal Alchemy) and sell them on a market shared by every player. |
-| Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a hex island, gather resources, train heroes, raid dungeons and hold out against monster waves. Real time; the town keeps producing for up to 8 hours while closed. |
+| Hex Hold (Hexfästet) | `games/hex-hold/` | 3D (Three.js): build a town on a terraced hex island with rivers and islets, gather and trade resources, train heroes who level up, raid dungeons, wall in the town and hold out against night-time monster waves and titans. Real time; the town keeps producing for up to 8 hours while closed. |
 
 Every game has the same frame around it:
 

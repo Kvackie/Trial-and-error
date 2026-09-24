@@ -6,6 +6,20 @@ import { tileTop } from '../world.js';
 import { model } from './assets.js';
 import { HealthBar } from './bars.js';
 
+// A soft orange glow, drawn once on a canvas and shared by all buildings.
+const GLOW = (() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255, 190, 110, 0.9)');
+  g.addColorStop(0.4, 'rgba(255, 150, 60, 0.35)');
+  g.addColorStop(1, 'rgba(255, 120, 40, 0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+})();
+
 const POST = new THREE.CylinderGeometry(0.2, 0.24, 1.25, 8);
 const STONE = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.9, flatShading: true });
 
@@ -79,7 +93,7 @@ export class Town {
     this.views = new Map(); // building id -> { group, name, bar }
   }
 
-  update(state, camera) {
+  update(state, camera, night = 0, now = 0) {
     const alive = new Set();
     for (const b of state.buildings) {
       alive.add(b.id);
@@ -107,6 +121,17 @@ export class Town {
         this.scene.add(group);
         view = { group, name, level: b.level, bar, bounce: view ? 0.35 : 0 };
         this.views.set(b.id, view);
+      }
+      // Warm light from windows and torches after dark.
+      if (!view.glow && !BUILDINGS[b.type].wall && !BUILDINGS[b.type].bridge) {
+        view.glow = new THREE.Sprite(GLOW);
+        view.glow.scale.setScalar(b.type === 'castle' ? 3.2 : 1.8);
+        view.glow.position.y = b.type === 'castle' ? 1.6 : 0.7;
+        view.group.add(view.glow);
+      }
+      if (view.glow) {
+        view.glow.visible = night > 0.2 && b.state === 'ready';
+        view.glow.material.opacity = Math.min(0.9, night) * (0.85 + Math.sin(now * 3 + b.id) * 0.08);
       }
       const max = BUILDINGS[b.type].hp * b.level;
       view.bar.set(b.state === 'destroyed' || b.state === 'building' ? 1 : b.hp / max, camera);
