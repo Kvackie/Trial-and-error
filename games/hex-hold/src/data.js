@@ -78,13 +78,14 @@ export const FIRST_WAVE = 10 * 60;
 export const WAVE_EVERY = 4 * 60;
 export function waveMonsters(n) {
   return [
-    ...Array(2 + Math.floor(n * 0.8)).fill('slime'),
+    ...Array(2 + Math.floor(n * 0.7)).fill('slime'),
     ...Array(Math.max(0, Math.floor((n - 2) * 0.7))).fill('spirit'),
-    ...Array(Math.max(0, Math.floor((n - 3) / 3))).fill('golem'),
+    ...Array(Math.max(0, Math.floor((n - 3) / 4))).fill('golem'),
     ...Array(n % BOSS_EVERY === 0 ? 1 + Math.floor(n / 15) : 0).fill('titan'),
   ];
 }
-export const waveStrength = (n) => 1.05 ** (n - 1);
+// Each monster gets 4% tougher per wave, and after wave 15 only 2% more per wave.
+export const waveStrength = (n) => 1.04 ** (Math.min(n, 15) - 1) * (1 + 0.02 * Math.max(0, n - 15));
 
 // Monster nests lie hidden in the fog. Waves come out of them, bigger the more the nest
 // has grown; with no nest left, waves are smaller and come from the sea, until a new
@@ -95,7 +96,7 @@ export const NEST_MAX_LEVEL = 5;
 export const NEST_GROW = 10 * 60; // seconds of play for a nest to grow a level
 export const NEST_RESPAWN = 12 * 60; // a new nest takes root this long after one is destroyed
 export const NEST_GUARD_EVERY = 15;
-export const nestHp = (level) => 600 + 500 * level;
+export const nestHp = (level) => 1000 + 700 * level;
 export const nestLoot = (level) => ({ gold: 80 * level, stone: 60 * level, wood: 60 * level });
 export const nestExtra = (level) => Array(level - 1).fill('spirit').concat(Array(Math.max(0, Math.floor((level - 2) / 2))).fill('golem'));
 export const NO_NEST_SHARE = 0.6; // share of the usual wave when no nest is left

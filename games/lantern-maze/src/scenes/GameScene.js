@@ -36,6 +36,12 @@ const MOVE_MS = 130;
 const REPEAT_MS = 170;
 const SWIPE_DIST = 36;
 
+// Lives as filled and empty hearts (clamped, so a bad count can never throw).
+const hearts = (n) => {
+  const full = Math.max(0, Math.min(MAX_LIVES, n));
+  return `${'♥'.repeat(full)}${'♡'.repeat(MAX_LIVES - full)}`;
+};
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('Game');
@@ -550,7 +556,7 @@ export class GameScene extends Phaser.Scene {
       puzzle = makePuzzle(this.progress.level);
       answered = false;
       question.setText(puzzle.text);
-      lives.setText(`${'♥'.repeat(this.progress.lives)}${'♡'.repeat(MAX_LIVES - this.progress.lives)}`);
+      lives.setText(hearts(this.progress.lives));
       buttons.forEach(({ bg, label }, i) => {
         bg.setFillStyle(0x16120d);
         label.setText(formatOption(puzzle.options[i])).setColor(IVORY_CSS);
@@ -595,7 +601,7 @@ export class GameScene extends Phaser.Scene {
         this.progress.lives--;
         saveProgress(this.progress);
         this.updateHud();
-        lives.setText(`${'♥'.repeat(this.progress.lives)}${'♡'.repeat(MAX_LIVES - this.progress.lives)}`);
+        lives.setText(hearts(this.progress.lives));
         this.time.delayedCall(REVEAL_MS, () => {
           if (this.progress.lives <= 0) {
             this.keyTarget = null;

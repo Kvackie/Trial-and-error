@@ -25,7 +25,8 @@ const HTML = {
         <li>Units gain experience from fights and dungeons and level up to 5 (a star each). The <b>blacksmith</b> researches better weapons and armour for all of them.</li>
         <li>Tap a unit (or <b>Army</b> to pick several), then tap a tile to send them there. They explore the dark as they go and fight monsters they meet.</li>
         <li>After ten minutes waves of monsters start coming, every few minutes and stronger each time; every fifth wave a stone titan leads them. They attack buildings; repair what they destroy.</li>
-        <li>An alarm warns you 30 seconds before a wave. When a building out of view is attacked, a red arrow at the screen edge points to it: tap it to look there.</li>
+        <li>An alarm warns you 30 seconds before a wave. When a building or unit out of view is attacked, a red arrow at the screen edge points to it: tap it to look there.</li>
+        <li>If the castle falls, it rebuilds itself for free once the wave is over. Too few workers because of a big army? Select units and <b>Send home</b> to put them back to work.</li>
       </ul>
       <h3>Monster nests</h3>
       <p>Glowing nests hide in the dark. The waves come out of them, and a nest grows bigger (up to level 5) the longer it's left alone, making its waves bigger too. Send your army to destroy one for a big reward, but its guards will fight back. With no nest left, waves are smaller and come from the sea, until a new nest takes root.</p>
@@ -59,7 +60,8 @@ const HTML = {
         <li>Enheter får erfarenhet av strider och grottor och går upp till nivå 5 (en stjärna per nivå). <b>Smedjan</b> forskar fram bättre vapen och rustningar åt alla.</li>
         <li>Tryck på en enhet (eller <b>Armé</b> för att välja flera) och sedan på en ruta för att skicka dem dit. De utforskar mörkret på vägen och slåss mot monster de möter.</li>
         <li>Efter tio minuter börjar vågor av monster komma, med några minuters mellanrum och starkare varje gång; var femte våg leds av en stentitan. De anfaller byggnader; reparera det de förstör.</li>
-        <li>Ett larm varnar 30 sekunder före en våg. När en byggnad utanför bilden anfalls pekar en röd pil vid skärmkanten mot den: tryck på den för att titta dit.</li>
+        <li>Ett larm varnar 30 sekunder före en våg. När en byggnad eller enhet utanför bilden anfalls pekar en röd pil vid skärmkanten mot den: tryck på den för att titta dit.</li>
+        <li>Om borgen faller byggs den upp igen gratis när vågen är över. För få arbetare för att armén är stor? Välj enheter och <b>Skicka hem</b> dem så att de börjar arbeta igen.</li>
       </ul>
       <h3>Monsterbon</h3>
       <p>Glödande bon gömmer sig i mörkret. Vågorna kommer därifrån, och ett bo växer (upp till nivå 5) ju längre det får vara ifred, så att vågorna också blir större. Skicka armén för att förstöra ett och få en stor belöning, men dess vakter slår tillbaka. När inga bon finns kvar blir vågorna mindre och kommer från havet, tills ett nytt bo slår rot.</p>

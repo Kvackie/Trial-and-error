@@ -9,7 +9,14 @@ const fresh = () => ({ level: 1, checkpoint: 1, lives: MAX_LIVES, best: 1 });
 export function loadProgress() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
-    if (saved && Number.isInteger(saved.level)) return { ...fresh(), ...saved };
+    if (saved && Number.isInteger(saved.level)) {
+      const progress = { ...fresh(), ...saved };
+      // Closed while the last heart was going out: finish that lost run now
+      // (back to the checkpoint with full lives), as the game would have.
+      if (!(progress.lives > 0)) Object.assign(progress, { level: progress.checkpoint, lives: MAX_LIVES });
+      progress.lives = Math.min(MAX_LIVES, progress.lives);
+      return progress;
+    }
   } catch {
     // Missing or unreadable: start fresh.
   }

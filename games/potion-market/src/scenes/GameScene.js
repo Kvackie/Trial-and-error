@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ELEMENTS, INGREDIENTS, POTIONS, ingredientById, potionById } from '../data.js';
 import { MAX_IN_CAULDRON, MAX_SELL, dayNumber, hotPotion, merchantStock, unitPrice } from '../economy.js';
-import { addToCauldron, brew, buy, count, emptyCauldron, helpIfBroke, learn, loadShop, preview, recordSale, saveShop } from '../shop.js';
+import { addToCauldron, brew, buy, count, emptyCauldron, helpIfBroke, learn, loadShop, preview, recordSale, saveShop, sellBackPrice, sellIngredient } from '../shop.js';
 import { claimFirstBrew, fetchFirsts, fetchMarket, sell } from '../online.js';
 import { THEME, openHelp } from '../help.js';
 import { tr } from '../strings.js';
@@ -437,9 +437,27 @@ export class GameScene extends Phaser.Scene {
     this.image(MARGIN + 80, merchantY, who, 200 * k);
     const bubble = this.card(MARGIN + 180 + (WIDTH - 180) / 2, merchantY, WIDTH - 190, 170, { fill: 0xf3e3c8, edge: 0x8a5a33 });
     this.text(bubble.x - bubble.w / 2 + 22, merchantY - 50, tr(who), { fontSize: '28px', fontStyle: 'bold', color: '#5a3a22' }, 0);
-    this.text(bubble.x - bubble.w / 2 + 22, merchantY + 16, tr('merchantHello'), { fontSize: '23px', color: '#2a1c14', wordWrap: { width: bubble.w - 44 } }, 0);
+    this.text(bubble.x - bubble.w / 2 + 22, merchantY + 16, tr(this.sellingBack ? 'merchantBuyBack' : 'merchantHello'), { fontSize: '23px', color: '#2a1c14', wordWrap: { width: bubble.w - 44 } }, 0);
+    // Switch between buying and selling ingredients back.
+    const pillW = 200;
+    const pill = this.card(bubble.x + bubble.w / 2 - pillW / 2 - 14, merchantY - 50, pillW, 52, {
+      fill: 0x8a5a33,
+      edge: 0x5a3a22,
+      onPress: () => {
+        playSound('click');
+        this.sellingBack = !this.sellingBack;
+        this.render();
+      },
+    });
+    this.text(pill.x, pill.y, tr(this.sellingBack ? 'buyMode' : 'sellBackMode'), { fontSize: '21px', fontStyle: 'bold', color: '#ffffff' });
 
-    const offers = merchantStock();
+    // Selling back: what you have (the most first), at half the usual price.
+    const offers = this.sellingBack
+      ? INGREDIENTS.map((i) => ({ id: i.id, price: sellBackPrice(i.id) }))
+          .filter((o) => count(this.shop, o.id) > 0)
+          .sort((a, b) => count(this.shop, b.id) - count(this.shop, a.id))
+          .slice(0, 8)
+      : merchantStock();
     const cols = 4;
     const gap = 12;
     const w = (WIDTH - gap * (cols - 1)) / cols;
@@ -448,15 +466,23 @@ export class GameScene extends Phaser.Scene {
     offers.forEach((offer, i) => {
       const x = MARGIN + w / 2 + (i % cols) * (w + gap);
       const y = offersY - h / 2 - 6 + Math.floor(i / cols) * (h + 12);
-      const affordable = this.shop.gold >= offer.price;
-      rows[Math.floor(i / cols)].push(this.card(x, y, w, h, { onPress: () => this.buy(offer) }));
+      const affordable = this.sellingBack || this.shop.gold >= offer.price;
+      rows[Math.floor(i / cols)].push(this.card(x, y, w, h, { onPress: () => (this.sellingBack ? this.sellBack(offer) : this.buy(offer)) }));
       this.image(x, y - 56 * k, offer.id, 74 * k);
       this.essenceBars(x, y - 4 * k, ingredientById[offer.id].essence, 100, 20);
       this.text(x, y + 30 * k, tr(offer.id), { fontSize: '21px', align: 'center', wordWrap: { width: w - 12 } });
-      this.text(x, y + 68 * k, offer.price.toString(), { fontSize: '30px', fontStyle: 'bold', color: affordable ? GOLD : '#a3654a' });
+      this.text(x, y + 68 * k, this.sellingBack ? `+${offer.price}` : offer.price.toString(), { fontSize: '30px', fontStyle: 'bold', color: this.sellingBack ? '#9be28f' : affordable ? GOLD : '#a3654a' });
       this.text(x, y + 98 * k, tr('owned', { n: count(this.shop, offer.id) }), { fontSize: '19px', color: '#d9c7b0' });
     });
-    this.focusRows = rows;
+    if (this.sellingBack && !offers.length) this.text(360, offersY, tr('nothingToSellBack'), { fontSize: '26px', color: '#d9c7b0', align: 'center', wordWrap: { width: WIDTH - 40 } });
+    this.focusRows = [[pill], ...rows.filter((r) => r.length)];
+  }
+
+  sellBack(offer) {
+    if (!sellIngredient(this.shop, offer.id)) return;
+    playSound('coin');
+    saveShop(this.shop);
+    this.render();
   }
 
   buy(offer) {

@@ -199,6 +199,22 @@ const ui = new UI({
     }
     refresh();
   },
+  onDismiss() {
+    const ids = selection?.kind === 'units' ? selection.ids : [];
+    if (!ids.length) return;
+    openConfirmDialog({
+      ...THEME,
+      title: tr('dismissTitle'),
+      message: tr('dismissMessage', { n: ids.length }),
+      confirmLabel: tr('dismissYes'),
+      onConfirm: () => {
+        sim.dismiss(state, ids);
+        selection = null;
+        playSound('click');
+        refresh();
+      },
+    });
+  },
   onSelectAll() {
     const ids = state.units.filter((u) => u.state !== 'away').map((u) => u.id);
     selection = ids.length ? { kind: 'units', ids } : null;
@@ -378,6 +394,9 @@ function react(events, now) {
         playSound('levelUp');
         ui.toast(tr('built', { name: tr(`b_${e.building.type}`) }));
         break;
+      case 'castleRebuilding':
+        ui.toast(tr('castleRebuilding'));
+        break;
       case 'nestFound':
         playSound('wrong');
         ui.toast(tr('nestFound'), 'warn');
@@ -427,7 +446,7 @@ function react(events, now) {
         break;
       case 'destroyed':
         playSound('crumble');
-        ui.toast(tr('lostBuilding', { name: tr(`b_${e.building.type}`).toLowerCase() }), 'alarm');
+        ui.toast(e.building.type === 'castle' ? tr('castleFell') : tr('lostBuilding', { name: tr(`b_${e.building.type}`).toLowerCase() }), 'alarm');
         break;
       case 'unitDied':
         playSound('wrong');
@@ -438,12 +457,15 @@ function react(events, now) {
         ui.toast(e.won ? tr('dungeonWon', { name: tr('dungeonName', { n: e.dungeon.tier - 1 }), loot: ui.lootText(e.loot) }) : tr('dungeonLost', { name: tr('dungeonName', { n: e.dungeon.tier }), back: e.back }), e.won ? '' : 'warn');
         break;
       case 'attack':
-        if (e.building) attacked.set(e.building.id, now);
+        if (e.building) attacked.set(`b${e.building.id}`, now);
         if (now - lastClash > 0.12) {
           lastClash = now;
           const shoots = !e.monster && UNITS[e.actor.type]?.shoots;
           playSound(shoots === 'spell' ? 'spell' : shoots ? 'twang' : e.monster ? 'bump' : 'clash');
         }
+        break;
+      case 'hurt':
+        attacked.set(`u${e.unit.id}`, now);
         break;
       case 'monsterDied':
         playSound('blast');
@@ -472,19 +494,28 @@ speedButton.addEventListener('click', () => {
 
 // --- Alerts: arrows at the screen edge pointing to buildings under attack off-screen -------
 
-const attacked = new Map(); // building id -> when it was last hit
+const attacked = new Map(); // 'b<building id>' or 'u<unit id>' -> when it was last hit
+// What an alert points at: a building or a unit, with where it is and its name.
+function alertTarget(id) {
+  if (id[0] === 'b') {
+    const b = state.buildings.find((x) => x.id === Number(id.slice(1)));
+    return b && b.state !== 'destroyed' ? { ...toWorld(b.q, b.r), name: tr(`b_${b.type}`) } : null;
+  }
+  const u = state.units.find((x) => x.id === Number(id.slice(1)));
+  return u && u.state !== 'away' ? { x: u.x, z: u.z, name: u.name ?? tr(`u_${u.type}`) } : null;
+}
 const alertLayer = document.querySelector('#alerts');
 function updateAlerts(now) {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const html = [];
   for (const [id, when] of attacked) {
-    const b = state.buildings.find((x) => x.id === id);
-    if (!b || b.state === 'destroyed' || now - when > 3) {
+    const target = alertTarget(id);
+    if (!target || now - when > 3) {
       attacked.delete(id);
       continue;
     }
-    const { x, z } = toWorld(b.q, b.r);
+    const { x, z } = target;
     const v = new THREE.Vector3(x, 1, z).project(camera);
     const behind = v.z > 1;
     let sx = ((v.x + 1) / 2) * w;
@@ -502,7 +533,7 @@ function updateAlerts(now) {
     const scale = Math.min((w / 2 - 36) / Math.abs(Math.cos(angle) || 1e-6), (h / 2 - 150) / Math.abs(Math.sin(angle) || 1e-6));
     const ax = cx + Math.cos(angle) * scale;
     const ay = cy + Math.sin(angle) * scale;
-    html.push(`<button class="alert" data-id="${id}" style="left:${ax}px;top:${ay}px" aria-label="${tr('underAttack', { name: tr(`b_${b.type}`).toLowerCase() })}"><b style="transform:rotate(${angle}rad)">➜</b></button>`);
+    html.push(`<button class="alert" data-id="${id}" style="left:${ax}px;top:${ay}px" aria-label="${tr('underAttack', { name: target.name })}"><b style="transform:rotate(${angle}rad)">➜</b></button>`);
   }
   const joined = html.join('');
   if (joined !== alertLayer.dataset.html) {
@@ -512,10 +543,9 @@ function updateAlerts(now) {
 }
 alertLayer.addEventListener('click', (e) => {
   const el = e.target.closest('.alert');
-  const b = el && state.buildings.find((x) => x.id === Number(el.dataset.id));
-  if (!b) return;
-  const { x, z } = toWorld(b.q, b.r);
-  lookAt(x, z);
+  const target = el && alertTarget(el.dataset.id);
+  if (!target) return;
+  lookAt(target.x, target.z);
   playSound('click');
 });
 

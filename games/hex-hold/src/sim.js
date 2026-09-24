@@ -345,7 +345,8 @@ export function upgrade(state, b) {
   return true;
 }
 
-export const repairCost = (b) => Object.fromEntries(Object.entries(BUILDINGS[b.type].cost ?? { stone: 100 }).map(([k, v]) => [k, Math.ceil(v / 2)]));
+// The castle is rebuilt for free (it also rebuilds itself once a wave is over).
+export const repairCost = (b) => b.type === 'castle' ? {} : Object.fromEntries(Object.entries(BUILDINGS[b.type].cost ?? { stone: 100 }).map(([k, v]) => [k, Math.ceil(v / 2)]));
 
 export function repair(state, b) {
   if (b.state !== 'destroyed' || !canAfford(state, repairCost(b))) return false;
@@ -405,6 +406,13 @@ export function moveUnits(state, ids, q, r) {
   return moved;
 }
 
+// Sends units home: they leave the army and go back to work (frees their people).
+export function dismiss(state, ids) {
+  const leaving = state.units.filter((u) => ids.includes(u.id) && u.state !== 'away');
+  state.units = state.units.filter((u) => !leaving.includes(u));
+  return leaving.length;
+}
+
 export function sendParty(state, dungeon, ids) {
   if (dungeon.state !== 'ready' || !ids.length) return false;
   const party = state.units.filter((u) => ids.includes(u.id) && u.state !== 'away');
@@ -462,7 +470,7 @@ export function builders(state) {
 export function constructionJobs(state) {
   return state.buildings
     .filter((b) => b.state === 'building' || b.state === 'upgrading')
-    .sort((a, b) => (a.started ?? a.id) - (b.started ?? b.id) || a.id - b.id);
+    .sort((a, b) => (b.type === 'castle') - (a.type === 'castle') || (a.started ?? a.id) - (b.started ?? b.id) || a.id - b.id);
 }
 
 export const waitingForBuilder = (state, b) => constructionJobs(state).indexOf(b) >= builders(state);
@@ -621,8 +629,8 @@ function nestsTick(state, dt, events) {
     }
     const near = state.units.filter((u) => u.state !== 'away' && hexDist(u, nest) <= 3);
     if (!near.length) {
-      nest.hp = Math.min(nest.maxHp, nest.hp + 2 * dt);
-      nest.guard = Math.min(nest.guard, 3);
+      nest.hp = Math.min(nest.maxHp, nest.hp + 6 * dt);
+      nest.guard = Math.min(nest.guard, 1);
       continue;
     }
     nest.guard -= dt;
@@ -908,6 +916,12 @@ export function tick(state, dt) {
     state.wave.next = WAVE_EVERY;
   }
   nestsTick(state, dt, events);
+  // A fallen castle rebuilds itself (first in line for a builder) once the wave is over.
+  const keep = castle(state);
+  if (keep.state === 'destroyed' && !waveOn(state)) {
+    repair(state, keep);
+    events.push({ type: 'castleRebuilding' });
+  }
   combat(state, dt, events);
   state.goalTimer = (state.goalTimer ?? 0) - dt;
   if (state.goalTimer <= 0) {

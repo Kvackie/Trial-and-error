@@ -101,8 +101,13 @@ if (leaderboardEnabled && typeof window !== 'undefined') {
   setTimeout(flushQueue, 3000);
 }
 
+// Requests give up after a while, so a game never waits forever on a slow network
+// (it then treats the request as failed or offline).
+const TIMEOUT = 15_000;
+const timeout = () => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(TIMEOUT) : undefined);
+
 export async function apiGet(path) {
-  const response = await fetch(`${BASE}${path}`);
+  const response = await fetch(`${BASE}${path}`, { signal: timeout() });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
@@ -113,6 +118,7 @@ export async function apiPost(path, body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...body, client: clientId() }),
+    signal: timeout(),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(data.error ?? `HTTP ${response.status}`), { status: response.status });

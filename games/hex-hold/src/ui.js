@@ -137,8 +137,8 @@ export class UI {
     if ((b.state === 'building' || b.state === 'upgrading') && waitingForBuilder(state, b)) lines.push(tr('waiting', { n: builders(state) }));
     else if (b.state === 'building') lines.push(tr('underConstruction', { s: clock(b.left) }));
     else if (b.state === 'upgrading') lines.push(tr('upgrading', { s: clock(b.left) }));
+    if (b.state === 'destroyed') lines.push(tr(b.type === 'castle' ? 'castleDown' : 'destroyed'));
     if (b.type === 'castle') lines.push(tr('buildersLine', { busy: Math.min(builders(state), constructionJobs(state).length), n: builders(state) }));
-    else if (b.state === 'destroyed') lines.push(tr('destroyed'));
     if (b.state !== 'destroyed') {
       lines.push(tr('hp', { hp: Math.ceil(b.hp), max: def.hp * b.level }));
       if (def.pop) lines.push(tr('housing', { n: def.pop * b.level }));
@@ -227,7 +227,7 @@ export class UI {
         <small>${esc(tr(`u_${u.type}`))} · ${esc(tr('xpLine', { hp: Math.ceil(u.hp), max: maxHp(state, u), xp: u.xp ?? 0 }))}</small></span></li>`)
       .join('');
     return this.head(esc(tr('units')), esc(tr('moveHint'))) + `<ul class="heroes">${heroes}</ul>` +
-      `<div class="row"><button class="btn" data-act="army">${esc(tr('selectAll'))}</button></div>`;
+      `<div class="row"><button class="btn" data-act="army">${esc(tr('selectAll'))}</button><button class="btn ghost" data-act="dismiss">${esc(tr('dismiss', { n: units.length }))}</button></div>`;
   }
 
   dungeonPanel(state, d) {
@@ -279,6 +279,8 @@ export class UI {
         return problem ? this.toast(tr(problem), 'warn') : h.onResearch(el.dataset.track);
       case 'army':
         return h.onSelectAll();
+      case 'dismiss':
+        return h.onDismiss();
       case 'attack-nest':
         return h.onAttackNest();
       case 'new':

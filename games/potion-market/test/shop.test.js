@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addToCauldron, brew, buy, emptyCauldron, helpIfBroke, learn, newShop, recordSale } from '../src/shop.js';
+import { addToCauldron, brew, buy, emptyCauldron, helpIfBroke, learn, newShop, recordSale, sellIngredient } from '../src/shop.js';
 
 test('buy, brew and sell', () => {
   const shop = newShop();
@@ -40,4 +40,12 @@ test('recipes cost gold, and a stuck shop gets help', () => {
   shop.gold = 5;
   shop.inventory = { emberroot: 2 };
   assert.equal(helpIfBroke(shop, 102), 0);
+});
+
+test('ingredients sell back for half their usual price', () => {
+  const shop = newShop();
+  buy(shop, 'nullstone', 50);
+  assert.equal(sellIngredient(shop, 'nullstone'), 23);
+  assert.equal(shop.gold, 120 - 50 + 23);
+  assert.equal(sellIngredient(shop, 'nullstone'), 0, 'none left');
 });

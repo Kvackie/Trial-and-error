@@ -1,6 +1,6 @@
 // The player's shop: gold, ingredients, potions in stock and the cauldron.
 // Plain data (no Phaser), saved in localStorage.
-import { INGREDIENTS, POTIONS, potionById } from './data.js';
+import { INGREDIENTS, POTIONS, ingredientById, potionById } from './data.js';
 import { MAX_IN_CAULDRON, START_GOLD, brewResult, dayNumber, decay, merchantStock } from './economy.js';
 
 const KEY = 'potion-market:state';
@@ -46,6 +46,18 @@ export function buy(shop, id, price) {
   shop.gold -= price;
   shop.inventory[id] = count(shop, id) + 1;
   return true;
+}
+
+// The merchant buys ingredients back for half their usual price.
+export const SELL_BACK = 0.5;
+export const sellBackPrice = (id) => Math.max(1, Math.floor(ingredientById[id].price * SELL_BACK));
+
+export function sellIngredient(shop, id) {
+  if (!count(shop, id)) return 0;
+  const price = sellBackPrice(id);
+  shop.inventory[id] -= 1;
+  shop.gold += price;
+  return price;
 }
 
 export function learn(shop, id) {

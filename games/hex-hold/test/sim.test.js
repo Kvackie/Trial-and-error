@@ -318,3 +318,20 @@ test('a town with no working lumber mill still gets some wood', async () => {
   state.units = Array.from({ length: 8 }, (_, i) => ({ id: 500 + i, type: 'knight', x: 0, z: 0, hp: 150, state: 'idle', path: [] }));
   assert.ok(rates(state).wood > 0);
 });
+
+test('a fallen castle rebuilds itself for free, and units can be sent home', async () => {
+  const { castle, dismiss, population } = await import('../src/sim.js');
+  const state = newGame(81);
+  const keep = castle(state);
+  keep.state = 'destroyed';
+  keep.hp = 0;
+  state.res = { wood: 0, stone: 0, food: 0, gold: 0 };
+  run(state, 1);
+  assert.equal(keep.state, 'building');
+  run(state, 20);
+  assert.equal(keep.state, 'ready');
+  state.units.push({ id: 700, type: 'knight', x: 0, z: 0, hp: 150, state: 'idle', path: [] });
+  const used = population(state).used;
+  assert.equal(dismiss(state, [700]), 1);
+  assert.equal(population(state).used, used - 1);
+});
