@@ -26,6 +26,24 @@ function readJson(file) {
   }
 }
 
+// The owner's other games, published from their own repos. Icons are the games' own tab icons.
+const OTHER_GAMES = [
+  {
+    url: 'https://kvackie.github.io/eternal-alchemy/',
+    name: 'Eternal Alchemy',
+    en: 'A cozy fantasy potion shop. Grow it, brew it, seal it, sell it.',
+    sv: 'En mysig trolldrycksbutik. Odla, brygg, försegla och sälj.',
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1412'/%3E%3Cpath d='M13 5h6v7.4l5.4 10.2A3 3 0 0 1 21.7 27H10.3a3 3 0 0 1-2.7-4.4L13 12.4V5z' fill='none' stroke='%23d9a441' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M10.4 19h11.2l2.8 5.2A2 2 0 0 1 22.6 27H9.4a2 2 0 0 1-1.8-2.8L10.4 19z' fill='%237fb8a0'/%3E%3C/svg%3E",
+  },
+  {
+    url: 'https://kvackie.github.io/dark-fantasy-management/',
+    name: 'Dark Fantasy Settlement',
+    en: 'A grim settlement builder. Raise a frontier town, staff it with heroes, and push back the fog.',
+    sv: 'Ett dystert bosättningsspel. Bygg en gränsstad, bemanna den med hjältar och tryck tillbaka dimman.',
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0b0c'/%3E%3Cpath d='M9 27V12l3-2 3 2v15M17 27V8l3-3 3 3v19M6 27h20' fill='none' stroke='%23d0a170' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E",
+  },
+];
+
 // Both languages are in the page; the flags (and the shared 'settings:lang' choice
 // the games also use) pick which one shows.
 const both = (en, sv) => `<span data-l="en">${en}</span><span data-l="sv">${sv}</span>`;
@@ -39,6 +57,7 @@ const TEXT = {
   apk: both('Android app (APK)', 'Android-app (APK)'),
   allApk: both('All games in one Android app (APK)', 'Alla spel i en Android-app (APK)'),
   updated: (date) => both(`Updated ${date}`, `Uppdaterad ${date}`),
+  more: both('More games', 'Fler spel'),
 };
 
 export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPOSITORY, scripts = '' } = {}) {
@@ -66,6 +85,19 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
     .join('\n');
 
   const hubApp = !app && repo && readJson(path.join(siteDir, 'app.json')).apk;
+
+  // Links out to the owner's other games (they open their own sites).
+  const others = OTHER_GAMES.map(
+    (g) => `      <li class="card">
+        <a class="play" href="${g.url}" target="_blank" rel="noopener">
+          <img class="icon" src="${g.icon}" alt="" width="72" height="72" />
+          <div>
+            <h2>${escapeHtml(g.name)} <span class="ext" aria-hidden="true">↗</span></h2>
+            <p>${both(escapeHtml(g.en), escapeHtml(g.sv))}</p>
+          </div>
+        </a>
+      </li>`,
+  ).join('\n');
 
   return `<!doctype html>
 <html lang="en">
@@ -119,6 +151,8 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
       .meta { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
       .apk { display: inline-block; margin-top: 10px; font-size: 0.9rem; color: var(--text); }
       .empty { color: var(--muted); }
+      .more { margin: 32px 0 12px; font-size: 1.2rem; color: var(--muted); font-weight: 600; }
+      .ext { font-size: 0.9rem; color: var(--muted); }
     </style>
   </head>
   <body>
@@ -134,6 +168,10 @@ export function renderHub(siteDir, { app = false, repo = process.env.GITHUB_REPO
 ${hubApp ? `      <a class="all-apk" href="${download(HUB_APP.tag, HUB_APP.file)}">${TEXT.allApk}</a>\n` : ''}${
     games.length ? `      <ul>\n${cards}\n      </ul>` : `      <p class="empty">${both('No games published yet.', 'Inga spel publicerade än.')}</p>`
   }
+      <h2 class="more">${TEXT.more}</h2>
+      <ul>
+${others}
+      </ul>
     </main>
     <script>
       document.querySelectorAll('[data-set-lang]').forEach(function (button) {
