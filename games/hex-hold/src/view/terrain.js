@@ -2,6 +2,7 @@
 // Everything that repeats is drawn with instancing, so hundreds of hexes stay cheap.
 import * as THREE from 'three';
 import { key, toWorld } from '../hex.js';
+import { tileTop } from '../world.js';
 import { buildingAt } from '../sim.js';
 import { source } from './assets.js';
 
@@ -34,8 +35,8 @@ function instanced(name, matrices, material) {
   return group;
 }
 
-const place = (x, y, z, rotation = 0, scale = 1) =>
-  new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation), new THREE.Vector3(scale, scale, scale));
+const place = (x, y, z, rotation = 0, scale = 1, height = scale) =>
+  new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation), new THREE.Vector3(scale, height, scale));
 
 export class Terrain {
   constructor(scene) {
@@ -68,19 +69,23 @@ export class Terrain {
       }
       const h = hash(k);
       const turn = ((h % 6) * Math.PI) / 3;
-      add(tile.terrain === 'water' ? 'hex_water' : 'hex_grass', place(x, 0, z));
+      const top = tileTop(tile);
+      // The tile model is a column one unit deep; stretch it down to the same floor
+      // for every height, so taller hexes show more of their earth sides.
+      if (tile.terrain === 'water') add('hex_water', place(x, 0, z));
+      else add('hex_grass', place(x, top, z, 0, 1, top + 1));
       if (buildingAt(state, tile.q, tile.r)) continue;
       if (tile.dungeon) {
-        this.dungeon(add, x, z);
+        this.dungeon(add, x, z, top);
         continue;
       }
       const options = DECO[tile.terrain];
       if (tile.terrain === 'water') {
         if (h % 5 === 0) add('waterlily_A', place(x + ((h >>> 4) % 10) / 20 - 0.25, -0.2, z, turn));
       } else if (tile.terrain === 'grass') {
-        if (h % 4 === 0) add(options[(h >>> 3) % options.length], place(x + ((h >>> 5) % 10) / 14 - 0.35, 0, z + ((h >>> 9) % 10) / 14 - 0.35, turn));
+        if (h % 4 === 0) add(options[(h >>> 3) % options.length], place(x + ((h >>> 5) % 10) / 14 - 0.35, top, z + ((h >>> 9) % 10) / 14 - 0.35, turn));
       } else if (options) {
-        add(options[(h >>> 3) % options.length], place(x, 0, z, turn));
+        add(options[(h >>> 3) % options.length], place(x, top, z, turn));
       }
     }
     for (const [name, matrices] of byModel) this.group.add(instanced(name, matrices, name === 'hex_grass' ? this.grassMaterial() : undefined));
@@ -101,11 +106,11 @@ export class Terrain {
   }
 
   // A dark doorway in a little ruin, lit by two torches.
-  dungeon(add, x, z) {
-    add('wall_doorway', place(x, 0, z + 0.1, 0, 0.36));
-    add('torch_mounted', place(x - 0.55, 0.45, z + 0.3, 0, 0.5));
-    add('torch_mounted', place(x + 0.55, 0.45, z + 0.3, 0, 0.5));
-    add('barrel_small_stack', place(x + 0.55, 0, z - 0.45, 0.6, 0.3));
-    add('banner_patternA_red', place(x, 0, z + 0.05, 0, 0.3));
+  dungeon(add, x, z, y) {
+    add('wall_doorway', place(x, y, z + 0.1, 0, 0.36));
+    add('torch_mounted', place(x - 0.55, y + 0.45, z + 0.3, 0, 0.5));
+    add('torch_mounted', place(x + 0.55, y + 0.45, z + 0.3, 0, 0.5));
+    add('barrel_small_stack', place(x + 0.55, y, z - 0.45, 0.6, 0.3));
+    add('banner_patternA_red', place(x, y, z + 0.05, 0, 0.3));
   }
 }

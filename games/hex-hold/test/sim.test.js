@@ -105,3 +105,21 @@ test('saves and loads', () => {
   assert.equal(copy.tiles.size, state.tiles.size);
   assert.deepEqual(copy.res, state.res);
 });
+
+test('the island rises in steps of one level from the beach', async () => {
+  const { neighbours } = await import('../src/hex.js');
+  for (let seed = 1; seed <= 20; seed++) {
+    const { tiles } = generateWorld(seed);
+    const levels = new Set();
+    for (const t of tiles.values()) {
+      if (t.terrain === 'water') continue;
+      levels.add(t.level);
+      for (const [q, r] of neighbours(t.q, t.r)) {
+        const n = tiles.get(key(q, r));
+        if (!n || n.terrain === 'water') assert.equal(t.level, 0, `shore ${seed}`);
+        else assert.ok(Math.abs(n.level - t.level) <= 1, `step ${seed}`);
+      }
+    }
+    assert.ok(levels.size >= 2, `varied ${seed}`);
+  }
+});

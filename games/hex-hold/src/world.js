@@ -80,8 +80,37 @@ export function generateWorld(seed) {
       dungeons.push(t);
     }
   }
+  assignHeights(tiles, height);
   return { tiles, dungeons: dungeons.map((t) => key(t.q, t.r)) };
 }
+
+// Land rises in steps from the beach: every hex gets a level (0 = beach height) that
+// grows inland, more on hills and mountains, and never more than one step above a
+// neighbour, so the island climbs in terraces rather than cliffs.
+export const MAX_LEVEL = 4;
+export const LEVEL_HEIGHT = 0.45;
+
+function assignHeights(tiles, noiseMap) {
+  const land = [...tiles.values()].filter((t) => t.terrain !== 'water');
+  for (const t of land) {
+    const k = key(t.q, t.r);
+    let level = Math.round((noiseMap.get(k) - 0.5) * 16 + 1.8);
+    if (t.terrain === 'hills') level += 1;
+    if (t.terrain === 'mountain') level += 2;
+    t.level = Math.max(0, Math.min(MAX_LEVEL, level));
+  }
+  for (const t of tiles.values()) if (t.terrain === 'water') t.level = -1;
+  // Limit each step to one level, working outwards from the sea.
+  for (let pass = 0; pass < MAX_LEVEL + 2; pass++) {
+    for (const t of land) {
+      const lowest = Math.min(...neighbours(t.q, t.r).map(([q, r]) => tiles.get(key(q, r))?.level ?? -1));
+      t.level = Math.min(t.level, lowest + 1);
+    }
+  }
+}
+
+// Height of the top of a hex (water is a little below the beach).
+export const tileTop = (tile) => (!tile || tile.terrain === 'water' ? -0.2 : tile.level * LEVEL_HEIGHT);
 
 export const isLand = (tile) => tile && tile.terrain !== 'water';
 export const isPassable = (tile) => tile && tile.terrain !== 'water' && tile.terrain !== 'mountain';

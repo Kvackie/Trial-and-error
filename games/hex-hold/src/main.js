@@ -9,7 +9,7 @@ import { onLangChange } from '../../../shared/i18n.js';
 import { playSound } from '../../../shared/sound.js';
 import { BUILDINGS, UNITS } from './data.js';
 import { SIZE, fromWorld, key, toWorld } from './hex.js';
-import { isPassable } from './world.js';
+import { LEVEL_HEIGHT, MAX_LEVEL, isPassable, tileTop } from './world.js';
 import * as sim from './sim.js';
 import { THEME, openHelp } from './help.js';
 import { tr } from './strings.js';
@@ -193,7 +193,7 @@ function refresh() {
   markerGroup.visible = !!hex;
   if (hex) {
     const { x, z } = toWorld(...hex);
-    markerGroup.position.set(x, 0, z);
+    markerGroup.position.set(x, Math.max(0, tileTop(sim.tileAt(state, ...hex))), z);
   }
 }
 
@@ -233,6 +233,21 @@ onLangChange(() => {
 
 const raycaster = new THREE.Raycaster();
 const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+// The hex under a ray: try each height from the top down and take the first hex whose
+// top is at that height, so taps land on raised terraces, not the hexes behind them.
+function pickHex(ray) {
+  const point = new THREE.Vector3();
+  for (let level = MAX_LEVEL; level >= 0; level--) {
+    ground.constant = -level * LEVEL_HEIGHT;
+    if (!ray.intersectPlane(ground, point)) continue;
+    const hex = fromWorld(point.x, point.z);
+    const tile = sim.tileAt(state, ...hex);
+    if (tile && tile.terrain !== 'water' && tile.level === level) return hex;
+  }
+  ground.constant = 0.2;
+  return ray.intersectPlane(ground, point) ? fromWorld(point.x, point.z) : null;
+}
 let down = null;
 canvas.addEventListener('pointerdown', (e) => {
   down = e.isPrimary ? { x: e.clientX, y: e.clientY, time: performance.now(), pointers: 1 } : null;
@@ -258,9 +273,9 @@ function tap(x, y) {
     return refresh();
   }
   raycaster.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
-  const point = raycaster.ray.intersectPlane(ground, new THREE.Vector3());
-  if (!point) return;
-  const [q, r] = fromWorld(point.x, point.z);
+  const picked = pickHex(raycaster.ray);
+  if (!picked) return;
+  const [q, r] = picked;
   const tile = sim.tileAt(state, q, r);
   const known = tile && state.revealed.has(key(q, r));
   const dungeon = known && sim.dungeonAt(state, q, r);
@@ -276,6 +291,7 @@ function tap(x, y) {
     if (sim.moveUnits(state, selection.ids, q, r)) {
       const { x: fx, z: fz } = toWorld(q, r);
       flag.position.set(fx, 0.6, fz);
+      flagBase = Math.max(0, tileTop(tile)) + 0.6;
       flag.visible = true;
       flagTime = 1.2;
       playSound('move');
@@ -290,6 +306,7 @@ function tap(x, y) {
   refresh();
 }
 let flagTime = 0;
+let flagBase = 0.6;
 
 // --- Events: sounds and messages -------------------------------------------------------------
 
@@ -365,7 +382,7 @@ function frame() {
   actors.update(state, dt, now, camera, selection?.kind === 'units' ? selection.ids : []);
   if (flagTime > 0) {
     flagTime -= dt;
-    flag.position.y = 0.6 + Math.sin(now * 8) * 0.08;
+    flag.position.y = flagBase + Math.sin(now * 8) * 0.08;
     flag.visible = flagTime > 0;
   }
   uiTimer -= dt;

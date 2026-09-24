@@ -1,7 +1,8 @@
 // Buildings on the map: the right model for each building's type, level and state.
 import * as THREE from 'three';
 import { BUILDINGS } from '../data.js';
-import { toWorld } from '../hex.js';
+import { key, toWorld } from '../hex.js';
+import { tileTop } from '../world.js';
 import { model } from './assets.js';
 import { HealthBar } from './bars.js';
 
@@ -28,7 +29,7 @@ export class Town {
         if (view) this.scene.remove(view.group);
         const group = new THREE.Group();
         const { x, z } = toWorld(b.q, b.r);
-        group.position.set(x, 0, z);
+        group.position.set(x, tileTop(state.tiles.get(key(b.q, b.r))), z);
         const body = model(name);
         body.rotation.y = ((b.id * 7) % 6) * (Math.PI / 3);
         group.add(body);

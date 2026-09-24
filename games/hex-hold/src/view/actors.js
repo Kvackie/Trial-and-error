@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { UNITS, MONSTERS } from '../data.js';
 import { hero, heroClips } from './assets.js';
+import { fromWorld, key } from '../hex.js';
+import { tileTop } from '../world.js';
 import { HealthBar } from './bars.js';
 
 const HERO_SCALE = 0.5;
@@ -180,7 +182,7 @@ export class Actors {
     for (const u of state.units) {
       const view = this.units.get(u.id);
       if (!view || !view.group.visible) continue;
-      v.set(view.group.position.x, 0.45, view.group.position.z).project(camera);
+      v.set(view.group.position.x, view.group.position.y + 0.45, view.group.position.z).project(camera);
       const d = Math.hypot(((v.x + 1) / 2) * width - x, ((1 - v.y) / 2) * height - y);
       if (d < bestD) [best, bestD] = [u, d];
     }
@@ -243,6 +245,8 @@ export class Actors {
     // Where each actor stands. Actors walk between hex middles; when several stand in
     // the same hex they spread out inside it instead of overlapping.
     const spot = this.spots(state);
+    // Ground height under a point: the top of the hex it is in.
+    const ground = (x, z) => Math.max(0, tileTop(state.tiles.get(key(...fromWorld(x, z)))));
     const follow = 1 - Math.exp(-dt * 14);
 
     // Units.
@@ -258,8 +262,8 @@ export class Actors {
       }
       view.group.visible = u.state !== 'away';
       const at = spot.get(u) ?? { x: u.x, z: u.z };
-      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, 0, at.z), follow);
-      else view.group.position.set(at.x, 0, at.z);
+      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, ground(u.x, u.z), at.z), follow);
+      else view.group.position.set(at.x, ground(u.x, u.z), at.z);
       view.placed = true;
       if (u.heading !== undefined) view.model.rotation.y = u.heading;
       if (now > view.busyUntil) view.play(u.state === 'moving' ? (UNITS[u.type].speed > 1.5 ? 'run' : 'walk') : 'idle');
@@ -284,8 +288,8 @@ export class Actors {
         this.monsters.set(m.id, view);
       }
       const at = spot.get(m) ?? { x: m.x, z: m.z };
-      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, 0, at.z), follow);
-      else view.group.position.set(at.x, 0, at.z);
+      if (view.placed) view.group.position.lerp(new THREE.Vector3(at.x, ground(m.x, m.z), at.z), follow);
+      else view.group.position.set(at.x, ground(m.x, m.z), at.z);
       view.placed = true;
       if (m.heading !== undefined) view.group.rotation.y = m.heading;
       const t = now * 1000;
@@ -329,9 +333,10 @@ export class Actors {
         this.shots.set(s, mesh);
       }
       const t = Math.min(1, s.t);
-      const fromY = s.from.y ?? 0.5;
-      mesh.position.set(s.from.x + (s.to.x - s.from.x) * t, fromY + (0.5 - fromY) * t + Math.sin(t * Math.PI) * 0.6, s.from.z + (s.to.z - s.from.z) * t);
-      mesh.lookAt(s.to.x, 0.5, s.to.z);
+      const fromY = ground(s.from.x, s.from.z) + (s.from.y ?? 0.5);
+      const toY = ground(s.to.x, s.to.z) + 0.5;
+      mesh.position.set(s.from.x + (s.to.x - s.from.x) * t, fromY + (toY - fromY) * t + Math.sin(t * Math.PI) * 0.6, s.from.z + (s.to.z - s.from.z) * t);
+      mesh.lookAt(s.to.x, toY, s.to.z);
     }
     for (const [s, mesh] of this.shots) {
       if (!live.has(s)) {
@@ -346,7 +351,7 @@ export class Actors {
       const u = state.units.find((x) => x.id === selected[i]);
       ring.visible = !!u && u.state !== 'away';
       const view = u && this.units.get(u.id);
-      if (view) ring.position.set(view.group.position.x, 0.03, view.group.position.z);
+      if (view) ring.position.set(view.group.position.x, view.group.position.y + 0.03, view.group.position.z);
     });
   }
 }
