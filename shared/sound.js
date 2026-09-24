@@ -180,6 +180,7 @@ const SOUNDS = {
     tone(196, { dur: 0.9, type: 'sawtooth', gain: 0.1 });
     tone(294, { at: 0.35, dur: 0.8, type: 'sawtooth', gain: 0.08 });
   },
+  alarm: () => notes([988, 784, 988, 784], { gap: 0.14, dur: 0.12, type: 'square', gain: 0.07 }),
   crumble: () => {
     noise({ dur: 0.7, gain: 0.35, freq: 500 });
     tone(80, { dur: 0.5, gain: 0.3, to: 40 });

@@ -251,7 +251,7 @@ export function buildProblem(state, type, q, r) {
 
 function addBuilding(state, type, q, r, { ready = false } = {}) {
   const def = BUILDINGS[type];
-  const b = { id: state.nextId++, type, q, r, level: 1, hp: def.hp, state: ready ? 'ready' : 'building', left: ready ? 0 : def.time, queue: [] };
+  const b = { id: state.nextId++, type, q, r, level: 1, hp: def.hp, state: ready ? 'ready' : 'building', left: ready ? 0 : def.time, queue: [], started: state.time };
   state.buildings.push(b);
   return b;
 }
@@ -279,6 +279,7 @@ export function upgrade(state, b) {
   if (upgradeProblem(state, b)) return false;
   pay(state, upgradeCost(b.type, b.level + 1));
   b.state = 'upgrading';
+  b.started = state.time;
   b.left = upgradeTime(b.type, b.level + 1);
   return true;
 }
@@ -289,6 +290,7 @@ export function repair(state, b) {
   if (b.state !== 'destroyed' || !canAfford(state, repairCost(b))) return false;
   pay(state, repairCost(b));
   b.state = 'building';
+  b.started = state.time;
   b.left = Math.ceil((BUILDINGS[b.type].time ?? 30) / 2);
   return true;
 }
@@ -388,12 +390,29 @@ function spawnUnit(state, b, type, events) {
   return u;
 }
 
+// Builders: one to start with and one more for every two homes (up to 6). Each works
+// on one building, upgrade or repair at a time; the rest wait their turn.
+export function builders(state) {
+  const homes = state.buildings.filter((b) => b.type === 'home' && working(b)).length;
+  return Math.min(6, 1 + Math.floor(homes / 2));
+}
+
+// Jobs in the order they were started; the first `builders` of them are being worked on.
+export function constructionJobs(state) {
+  return state.buildings
+    .filter((b) => b.state === 'building' || b.state === 'upgrading')
+    .sort((a, b) => (a.started ?? a.id) - (b.started ?? b.id) || a.id - b.id);
+}
+
+export const waitingForBuilder = (state, b) => constructionJobs(state).indexOf(b) >= builders(state);
+
 function economy(state, dt, events) {
   const gain = rates(state);
   addResources(state, Object.fromEntries(Object.entries(gain).map(([r, v]) => [r, v * dt])));
 
+  const active = new Set(constructionJobs(state).slice(0, builders(state)));
   for (const b of state.buildings) {
-    if (b.state === 'building' || b.state === 'upgrading') {
+    if (active.has(b)) {
       b.left -= dt;
       if (b.left <= 0) {
         if (b.state === 'upgrading') b.level++;
@@ -593,7 +612,7 @@ function combat(state, dt, events) {
       if (m.cooldown <= 0) {
         m.cooldown = ATTACK_COOLDOWN * 1.3;
         const dmg = Math.round(def.damage * m.strength);
-        events.push({ type: 'attack', actor: m, monster: true });
+        events.push({ type: 'attack', actor: m, monster: true, building: target.kind === 'unit' ? null : target.ref });
         if (target.kind === 'unit') hurtUnit(state, target.ref, dmg, events);
         else damageBuilding(state, target.ref, dmg, events);
       }
@@ -715,7 +734,9 @@ export function tick(state, dt) {
   const events = [];
   economy(state, dt, events);
   state.time += dt;
+  const before = state.wave.next;
   state.wave.next -= dt;
+  if (before > 30 && state.wave.next <= 30) events.push({ type: 'waveSoon' });
   if (state.wave.next <= 0) {
     spawnWave(state, events);
     state.wave.next = WAVE_EVERY;

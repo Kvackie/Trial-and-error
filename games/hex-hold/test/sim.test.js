@@ -55,7 +55,7 @@ test('the first wave comes after ten minutes of play, and trained knights fight 
   }
   const spot = [...state.tiles.values()].find((t) => !buildProblem(state, 'barracks', t.q, t.r));
   const barracks = build(state, 'barracks', spot.q, spot.r);
-  run(state, 45);
+  run(state, 90); // one builder at first: the homes go up before the barracks
   assert.equal(barracks.state, 'ready');
   for (let i = 0; i < 3; i++) assert.ok(train(state, barracks, 'knight'), `train ${i}`);
   const events = run(state, FIRST_WAVE - state.time + 1);
@@ -230,4 +230,29 @@ test('the tutorial moves on as each step is done, and old saves skip it', async 
   assert.equal(tutorialStep(state).id, 'home');
   const old = deserialise(serialise(state).replace('"tutorial":{"step":1,"done":false},', ''));
   assert.equal(tutorialStep(old), null);
+});
+
+test('one builder works at a time until there are more homes; the rest wait their turn', async () => {
+  const { builders, waitingForBuilder } = await import('../src/sim.js');
+  const state = newGame(41);
+  state.res = { wood: 500, stone: 500, food: 500, gold: 500 };
+  assert.equal(builders(state), 1);
+  const place = (type) => {
+    const spot = [...state.tiles.values()].find((t) => !buildProblem(state, type, t.q, t.r));
+    return build(state, type, spot.q, spot.r);
+  };
+  const first = place('home');
+  run(state, 0.5);
+  const second = place('home');
+  assert.equal(waitingForBuilder(state, first), false);
+  assert.equal(waitingForBuilder(state, second), true);
+  const left = second.left;
+  run(state, 5);
+  assert.equal(second.left, left, 'a queued building makes no progress');
+  run(state, 12);
+  assert.equal(first.state, 'ready');
+  assert.equal(waitingForBuilder(state, second), false);
+  run(state, 13);
+  assert.equal(second.state, 'ready');
+  assert.equal(builders(state), 2);
 });

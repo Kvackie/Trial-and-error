@@ -2,7 +2,7 @@
 // for whatever is selected (a tile to build on, a building, units or a dungeon).
 import { BUILDINGS, BUILD_ORDER, GOALS, TRADE_AMOUNT, tradeGet, RESEARCH, RESEARCH_BONUS, RESEARCH_MAX, RESOURCES, UNITS, dungeonTime, researchCost, upgradeCost } from './data.js';
 import { parse } from './hex.js';
-import { buildProblem, canAfford, heroLevel, maxHp, partyChance, tradeProblem, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
+import { buildProblem, canAfford, builders, constructionJobs, heroLevel, maxHp, partyChance, tradeProblem, waitingForBuilder, population, rates, repairCost, researchProblem, storage, trainProblem, upgradeProblem } from './sim.js';
 import { tr } from './strings.js';
 import { TUTORIAL, tutorialStep } from './tutorial.js';
 
@@ -52,7 +52,8 @@ export class UI {
           `<span class="chip ${state.res[res] >= cap ? 'full' : ''}" title="${esc(tr(res))}">${ICONS[res]}<b>${Math.floor(state.res[res])}</b><small class="${r[res] < 0 ? 'minus' : ''}">${Math.round(r[res] * 60) > 0 ? `+${Math.round(r[res] * 60)}` : Math.round(r[res] * 60) < 0 ? Math.round(r[res] * 60) : ''}</small></span>`,
       ).join('') + `<span class="chip ${used >= people ? 'full' : ''}" title="${esc(tr('people'))}">${ICONS.people}<b>${used}/${people}</b></span>`;
     const w = state.wave;
-    if (state.monsters.length) this.wave.textContent = tr('waveNow', { n: w.number });
+    if (this.paused) this.wave.textContent = tr('paused');
+    else if (state.monsters.length) this.wave.textContent = tr('waveNow', { n: w.number });
     else this.wave.textContent = w.next < 180 || w.number > 0 ? tr('nextWave', { time: clock(w.next) }) : tr('quiet');
     this.wave.classList.toggle('alarm', state.monsters.length > 0 || w.next < 30);
     // A boss gets its own health bar under the top bar.
@@ -132,8 +133,10 @@ export class UI {
     const def = BUILDINGS[b.type];
     const lines = [];
     let actions = '';
-    if (b.state === 'building') lines.push(tr('underConstruction', { s: clock(b.left) }));
+    if ((b.state === 'building' || b.state === 'upgrading') && waitingForBuilder(state, b)) lines.push(tr('waiting', { n: builders(state) }));
+    else if (b.state === 'building') lines.push(tr('underConstruction', { s: clock(b.left) }));
     else if (b.state === 'upgrading') lines.push(tr('upgrading', { s: clock(b.left) }));
+    if (b.type === 'castle') lines.push(tr('buildersLine', { busy: Math.min(builders(state), constructionJobs(state).length), n: builders(state) }));
     else if (b.state === 'destroyed') lines.push(tr('destroyed'));
     if (b.state !== 'destroyed') {
       lines.push(tr('hp', { hp: Math.ceil(b.hp), max: def.hp * b.level }));

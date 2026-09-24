@@ -180,7 +180,7 @@ license or download. Games call `playSound('name')`; the available names are lis
 file (general: `click`, `gameOver`; pieces: `move`, `rotate`, `drop`, `clear`; matching: `select`,
 `swap`, `invalid`, `match`, `special`, `blast`, `shuffle`; exploring: `step`, `bump`, `chest`, `correct`,
 `wrong`, `levelUp`, `checkpoint`; creatures: `hatch`, `splash`, `catch`, `discover`; shop: `bubble`,
-`brew`, `coin`; town and battle: `hammer`, `clash`, `twang`, `spell`, `horn`, `crumble`). Add new sounds there rather than in a game. Volume and mute come from
+`brew`, `coin`; town and battle: `hammer`, `clash`, `twang`, `spell`, `horn`, `alarm`, `crumble`). Add new sounds there rather than in a game. Volume and mute come from
 Settings and apply to every game.
 
 ## Leaderboard and online play

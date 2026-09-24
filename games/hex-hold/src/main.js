@@ -137,17 +137,25 @@ const ui = new UI({
     const b = sim.build(state, type, selection.q, selection.r);
     if (b) {
       playSound('hammer');
+      if (sim.waitingForBuilder(state, b)) ui.toast(tr('queued'));
       selection = { kind: 'building', id: b.id };
       refresh();
     }
   },
   onUpgrade() {
-    if (sim.upgrade(state, selectedBuilding())) playSound('hammer');
+    const b = selectedBuilding();
+    if (sim.upgrade(state, b)) {
+      playSound('hammer');
+      if (sim.waitingForBuilder(state, b)) ui.toast(tr('queued'));
+    }
     refresh();
   },
   onRepair() {
-    if (sim.repair(state, selectedBuilding())) playSound('hammer');
-    else ui.toast(tr('noResources'), 'warn');
+    const b = selectedBuilding();
+    if (sim.repair(state, b)) {
+      playSound('hammer');
+      if (sim.waitingForBuilder(state, b)) ui.toast(tr('queued'));
+    } else ui.toast(tr('noResources'), 'warn');
     refresh();
   },
   onTrain(unit) {
@@ -254,6 +262,7 @@ document.querySelector('#help').addEventListener('click', () => {
   openHelp();
 });
 onLangChange(() => {
+  showSpeed();
   ui.lastPanel = '';
   refresh();
 });
@@ -375,6 +384,10 @@ function react(events, now) {
         playSound('levelUp');
         ui.toast(tr('researched', { name: tr(`r_${e.track}`), tier: 'I'.repeat(e.tier) }));
         break;
+      case 'waveSoon':
+        playSound('alarm');
+        ui.toast(tr('waveSoon'), 'warn');
+        break;
       case 'wave':
         playSound('horn');
         ui.toast(e.boss ? tr('bossWave', { n: e.number }) : tr('waveNow', { n: e.number }), 'alarm');
@@ -392,6 +405,7 @@ function react(events, now) {
         ui.toast(e.won ? tr('dungeonWon', { name: tr('dungeonName', { n: e.dungeon.tier - 1 }), loot: ui.lootText(e.loot) }) : tr('dungeonLost', { name: tr('dungeonName', { n: e.dungeon.tier }), back: e.back }), e.won ? '' : 'warn');
         break;
       case 'attack':
+        if (e.building) attacked.set(e.building.id, now);
         if (now - lastClash > 0.12) {
           lastClash = now;
           const shoots = !e.monster && UNITS[e.actor.type]?.shoots;
@@ -407,6 +421,71 @@ function react(events, now) {
   }
 }
 
+// --- Speed: normal, double, paused -------------------------------------------------------
+
+let speed = 1;
+const speedButton = document.querySelector('#speed');
+function showSpeed() {
+  speedButton.querySelector('span').textContent = speed === 0 ? '❚❚' : `${speed}×`;
+  speedButton.classList.toggle('paused', speed === 0);
+  speedButton.setAttribute('aria-label', tr(speed === 0 ? 'paused' : speed === 2 ? 'speed2' : 'speed1'));
+  ui.paused = speed === 0;
+}
+speedButton.addEventListener('click', () => {
+  speed = speed === 1 ? 2 : speed === 2 ? 0 : 1;
+  playSound('click');
+  showSpeed();
+});
+
+// --- Alerts: arrows at the screen edge pointing to buildings under attack off-screen -------
+
+const attacked = new Map(); // building id -> when it was last hit
+const alertLayer = document.querySelector('#alerts');
+function updateAlerts(now) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const html = [];
+  for (const [id, when] of attacked) {
+    const b = state.buildings.find((x) => x.id === id);
+    if (!b || b.state === 'destroyed' || now - when > 3) {
+      attacked.delete(id);
+      continue;
+    }
+    const { x, z } = toWorld(b.q, b.r);
+    const v = new THREE.Vector3(x, 1, z).project(camera);
+    const behind = v.z > 1;
+    let sx = ((v.x + 1) / 2) * w;
+    let sy = ((1 - v.y) / 2) * h;
+    if (behind) {
+      sx = w - sx;
+      sy = h - sy;
+    }
+    const onScreen = !behind && sx > 30 && sx < w - 30 && sy > 130 && sy < h - 160;
+    if (onScreen) continue;
+    // Clamp to the screen edge, pointing towards the building.
+    const cx = w / 2;
+    const cy = h / 2;
+    const angle = Math.atan2(sy - cy, sx - cx);
+    const scale = Math.min((w / 2 - 36) / Math.abs(Math.cos(angle) || 1e-6), (h / 2 - 150) / Math.abs(Math.sin(angle) || 1e-6));
+    const ax = cx + Math.cos(angle) * scale;
+    const ay = cy + Math.sin(angle) * scale;
+    html.push(`<button class="alert" data-id="${id}" style="left:${ax}px;top:${ay}px" aria-label="${tr('underAttack', { name: tr(`b_${b.type}`).toLowerCase() })}"><b style="transform:rotate(${angle}rad)">➜</b></button>`);
+  }
+  const joined = html.join('');
+  if (joined !== alertLayer.dataset.html) {
+    alertLayer.innerHTML = joined;
+    alertLayer.dataset.html = joined;
+  }
+}
+alertLayer.addEventListener('click', (e) => {
+  const el = e.target.closest('.alert');
+  const b = el && state.buildings.find((x) => x.id === Number(el.dataset.id));
+  if (!b) return;
+  const { x, z } = toWorld(b.q, b.r);
+  lookAt(x, z);
+  playSound('click');
+});
+
 // --- The loop ------------------------------------------------------------------------------
 
 const clockTimer = new THREE.Clock();
@@ -416,10 +495,12 @@ let saveTimer = 0;
 function frame() {
   const dt = Math.min(clockTimer.getDelta(), 0.1);
   const now = clockTimer.elapsedTime;
-  // The world holds still while a dialog (help, settings) is open.
-  if (!isDialogOpen()) {
-    const events = sim.tick(state, dt);
-    if (events.length) react(events, now);
+  // The world holds still while a dialog (help, settings) is open, or when paused.
+  if (!isDialogOpen() && speed > 0) {
+    for (let i = 0; i < speed; i++) {
+      const events = sim.tick(state, dt);
+      if (events.length) react(events, now);
+    }
   }
   const signature = `${state.revealed.size}|${state.buildings.length}|${state.buildings.filter((b) => b.state === 'ready').length}`;
   if (signature !== terrainKey) {
@@ -439,6 +520,7 @@ function frame() {
   if (uiTimer <= 0) {
     uiTimer = 0.25;
     refresh();
+    updateAlerts(now);
   }
   saveTimer -= dt;
   if (saveTimer <= 0) {
