@@ -11,13 +11,13 @@ import { bindText } from '../../../../shared/i18n.js';
 import { playSound } from '../../../../shared/sound.js';
 import { tr } from '../strings.js';
 
-const CELL = 87;
+const CELL = 115;
 const BOARD_SIZE = COLS * CELL;
 const BOARD_X = (720 - BOARD_SIZE) / 2;
 const HUD_HEIGHT = 130;
 const HUD_GAP = 26;
-const POTION_HEIGHT = 80;
-const SWIPE_DIST = 30;
+const POTION_HEIGHT = 104;
+const SWIPE_DIST = 40;
 const HINT_DELAY = 6000;
 
 export class GameScene extends Phaser.Scene {

@@ -3,9 +3,11 @@
 // The board changes immediately; resolveSwap() returns a list of steps describing
 // what happened so the scene can animate them in order.
 
-export const ROWS = 8;
-export const COLS = 8;
-export const COLORS = 6;
+// A 6×6 board with big cells, so taps on a phone land where they're meant to;
+// five colours keep matches coming on the smaller board.
+export const ROWS = 6;
+export const COLS = 6;
+export const COLORS = 5;
 export const MOVES = 30;
 
 // Specials are colourless: they never match, and go off when swapped or caught in a blast.
