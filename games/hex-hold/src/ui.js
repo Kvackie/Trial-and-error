@@ -133,6 +133,8 @@ export class UI {
     if (b.state === 'destroyed') {
       const cost = repairCost(b);
       actions += `<button class="btn primary ${canAfford(state, cost) ? '' : 'off'}" data-act="repair">${esc(tr('repair'))} ${costHtml(cost, state)}</button>`;
+    } else if (def.fixed) {
+      lines.push(tr(def.gate ? 'gateInfo' : 'wallInfo'));
     } else if (b.level < 3) {
       const problem = upgradeProblem(state, b);
       actions += `<button class="btn primary ${problem ? 'off' : ''}" data-act="upgrade" data-problem="${problem ?? ''}">${esc(tr('upgrade'))} ${costHtml(upgradeCost(b.type, b.level + 1), state)}</button>`;
@@ -171,7 +173,7 @@ export class UI {
         })
         .join('')}</div>`;
     }
-    return this.head(`${esc(tr(`b_${b.type}`))} <span class="lvl">${esc(tr('level', { n: b.level }))}</span>`) +
+    return this.head(`${esc(tr(`b_${b.type}`))}${def.fixed ? '' : ` <span class="lvl">${esc(tr('level', { n: b.level }))}</span>`}`) +
       `<ul class="lines">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>${train}<div class="row">${actions}</div>`;
   }
 

@@ -173,3 +173,28 @@ test('taverns make homes hold more, markets trade, and goals pay out once', asyn
   assert.ok(events.some((e) => e.type === 'goal' && e.goal.id === 'homes'));
   assert.ok(!run(state, 2).some((e) => e.type === 'goal' && e.goal.id === 'homes'));
 });
+
+test('walls stop monsters until they break through; gates let units pass', async () => {
+  const { moveUnits } = await import('../src/sim.js');
+  const state = newGame(12);
+  const ring = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  ring.forEach(([q, r], i) => {
+    const tile = state.tiles.get(key(q, r));
+    tile.terrain = 'grass';
+    state.buildings.push({ id: 900 + i, type: i === 0 ? 'gate' : 'wall', q, r, level: 1, hp: 300, state: 'ready', left: 0, queue: [] });
+  });
+  // A unit inside can walk out through the gate.
+  state.units.push({ id: 950, type: 'scout', name: 'S', xp: 0, ...toWorld(0, 0), hp: 60, state: 'idle', path: [], cooldown: 0, target: null });
+  assert.ok(moveUnits(state, [950], 3, 0));
+  assert.ok(state.units[0].path.some(([q, r]) => q === 1 && r === 0), 'goes through the gate');
+  state.units = [];
+  // A monster outside has to break a wall or the gate to reach the castle.
+  const { x, z } = toWorld(3, -1);
+  state.monsters.push({ id: 960, type: 'golem', x, z, hp: 5000, maxHp: 5000, path: [], cooldown: 0, target: null, strength: 1 });
+  const events = run(state, 60);
+  assert.ok(events.some((e) => e.type === 'attack' && e.monster));
+  const castle = state.buildings.find((b) => b.type === 'castle');
+  const walls = state.buildings.filter((b) => b.id >= 900);
+  assert.ok(walls.some((w) => w.hp < 300) || castle.hp < 800);
+  assert.ok(!walls.every((w) => w.hp === 300) , 'a wall or the gate took the hits');
+});

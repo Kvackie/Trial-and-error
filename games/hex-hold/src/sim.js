@@ -216,7 +216,9 @@ export function buildProblem(state, type, q, r) {
   const tile = tileAt(state, q, r);
   if (!tile || !state.revealed.has(key(q, r))) return 'hidden';
   if (!isPassable(tile) || tile.dungeon || buildingAt(state, q, r)) return 'occupied';
-  if (!state.buildings.some((b) => distance([b.q, b.r], [q, r]) <= BUILD_RANGE)) return 'tooFar';
+  // Walls can go a little further out, but don't stretch the town themselves.
+  const reach = def.wall ? BUILD_RANGE + 1 : BUILD_RANGE;
+  if (!state.buildings.some((b) => !BUILDINGS[b.type].wall && distance([b.q, b.r], [q, r]) <= reach)) return 'tooFar';
   const terrain = def.terrain ?? DEFAULT_TERRAIN;
   if (!terrain.includes(tile.terrain)) return `terrain_${type}`;
   if (def.near && !neighbours(q, r).some(([nq, nr]) => tileAt(state, nq, nr)?.terrain === def.near)) return `near_${def.near}`;
@@ -249,6 +251,7 @@ export function build(state, type, q, r) {
 }
 
 export function upgradeProblem(state, b) {
+  if (BUILDINGS[b.type].fixed) return 'maxLevel';
   if (b.state !== 'ready') return 'busy';
   if (b.level >= MAX_LEVEL) return 'maxLevel';
   if (!canAfford(state, upgradeCost(b.type, b.level + 1))) return 'noResources';
@@ -289,7 +292,14 @@ export function train(state, b, unit) {
   return true;
 }
 
-const passCost = (state) => (q, r) => (isPassable(tileAt(state, q, r)) ? 1 : Infinity);
+// Walls block monsters and units; gates only block monsters. Ruined walls block nobody.
+const passCost = (state, monster = false) => (q, r) => {
+  if (!isPassable(tileAt(state, q, r))) return Infinity;
+  const b = buildingAt(state, q, r);
+  const def = b && b.state !== 'destroyed' && BUILDINGS[b.type];
+  if (def?.wall && (monster || !def.gate)) return Infinity;
+  return 1;
+};
 
 // Orders units to walk to a hex (they fight whatever they meet on the way).
 export function moveUnits(state, ids, q, r) {
@@ -542,7 +552,9 @@ function combat(state, dt, events) {
     m.cooldown -= dt;
     const units = state.units.filter((u) => u.state !== 'away' && alive(u));
     const nearUnit = units.filter((u) => worldDist(u, m) <= 2.5).sort((a, b) => worldDist(a, m) - worldDist(b, m))[0];
-    let target = nearUnit ? { kind: 'unit', ref: nearUnit } : null;
+    const siege = m.siege && buildingTargets.find((b) => b.id === m.siege);
+    if (!siege) m.siege = null;
+    let target = siege ? { kind: 'wall', ref: siege } : nearUnit ? { kind: 'unit', ref: nearUnit } : null;
     if (!target && buildingTargets.length) {
       const b = buildingTargets.reduce((best, o) => (distance([o.q, o.r], hexOf(m)) < distance([best.q, best.r], hexOf(m)) ? o : best));
       target = { kind: 'building', ref: b };
@@ -569,9 +581,15 @@ function combat(state, dt, events) {
     } else {
       const last = m.path.at(-1);
       if ((!last || m.repath <= 0) && atCentre(m)) {
-        m.path = findPath(hexOf(m), goal, passCost(state), 800) ?? [];
+        const path = findPath(hexOf(m), goal, passCost(state, true), 800);
+        if (!path && target.kind !== 'wall') {
+          // Walled off: go and break down the nearest wall or gate instead.
+          const walls = buildingTargets.filter((b) => BUILDINGS[b.type].wall);
+          if (walls.length) m.siege = walls.reduce((best, o) => (distance([o.q, o.r], hexOf(m)) < distance([best.q, best.r], hexOf(m)) ? o : best)).id;
+        }
+        m.path = path ?? [];
         m.repath = 1.5;
-        if (target.kind === 'building' && m.path.length) m.path.pop(); // stop next to it
+        if (target.kind !== 'unit' && m.path.length) m.path.pop(); // stop next to it
       }
       m.repath -= dt;
       if (m.path.length) walk(state, m, def.speed, dt);

@@ -23,9 +23,13 @@ export const BUILDINGS = {
   tavern: { model: 'building_tavern_blue', cost: { wood: 60, stone: 30, gold: 20 }, time: 35, hp: 220, workers: 1, homeBonus: 1 },
   blacksmith: { model: 'building_blacksmith_blue', cost: { wood: 70, stone: 60 }, time: 40, hp: 260, workers: 2, research: true },
   catapult: { model: 'building_tower_catapult_blue', cost: { wood: 60, stone: 120, gold: 40 }, time: 50, hp: 420, workers: 2, reveal: 3, attack: { damage: 28, range: 5, cooldown: 4, splash: 1, shot: 'boulder' }, terrain: ['grass', 'hills', 'forest'] },
+  // Walls and gates join up with their neighbours. Monsters can't pass either (they
+  // break through when there's no way round); units walk through gates.
+  wall: { model: 'wall_straight', cost: { stone: 12 }, time: 4, hp: 300, wall: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
+  gate: { model: 'wall_straight_gate', cost: { wood: 20, stone: 20 }, time: 8, hp: 350, wall: true, gate: true, fixed: true, terrain: ['grass', 'forest', 'hills'] },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tavern', 'wall', 'gate', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 
