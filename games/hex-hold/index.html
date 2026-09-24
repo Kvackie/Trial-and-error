@@ -35,6 +35,11 @@
         #resources { gap: 4px; }
       }
 
+      #boss { justify-self: center; width: min(420px, 90vw); display: grid; gap: 3px; text-align: center; font-size: 14px; color: #ffb3a6; text-shadow: 0 1px 4px #000; }
+      #boss[hidden] { display: none; }
+      #boss span { height: 10px; border-radius: 5px; background: rgba(0, 0, 0, 0.6); border: 1px solid #ff6a55; overflow: hidden; }
+      #boss i { display: block; height: 100%; background: linear-gradient(90deg, #ff3b2e, #ff8a55); transition: width 0.2s; }
+
       /* Bottom panel. */
       #panel { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto;
         background: rgba(14, 26, 38, 0.92); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 12px; box-sizing: border-box; }
@@ -101,6 +106,7 @@
         <button class="round" id="help" aria-label="How to play"><span>?</span></button>
       </div>
       <div id="resources"></div>
+      <div id="boss" hidden><b></b><span><i></i></span></div>
     </div>
     <div id="toasts" aria-live="polite"></div>
     <div id="panel"></div>

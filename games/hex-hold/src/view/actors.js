@@ -30,6 +30,7 @@ const MATERIALS = {
   bone: mat(0xeee6d2),
   glowPurple: new THREE.MeshBasicMaterial({ color: 0xb37bff, transparent: true, opacity: 0.35, depthWrite: false }),
   eyeFire: new THREE.MeshBasicMaterial({ color: 0xff9a2e }),
+  eyeRed: new THREE.MeshBasicMaterial({ color: 0xff3b2e }),
   rock: mat(0x8c7f70),
   rockDark: mat(0x6a5f55),
   moss: mat(0x5d8a3a),
@@ -73,7 +74,9 @@ function buildMonster(type) {
     tail.rotation.x = Math.PI;
     body.add(tail);
   } else {
-    const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 0), MATERIALS.rock);
+    // Golem; the titan boss is a huge dark one with a crown of spikes.
+    const titan = type === 'titan';
+    const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 0), titan ? MATERIALS.rockDark : MATERIALS.rock);
     torso.position.y = 0.62;
     torso.scale.set(1.1, 1, 0.9);
     const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.17, 0), MATERIALS.rockDark);
@@ -87,9 +90,18 @@ function buildMonster(type) {
       arm.position.set(side * 0.44, 0.5, 0.05);
       const leg = new THREE.Mesh(new THREE.DodecahedronGeometry(0.14, 0), MATERIALS.rock);
       leg.position.set(side * 0.18, 0.18, 0);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), MATERIALS.eyeFire);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), titan ? MATERIALS.eyeRed : MATERIALS.eyeFire);
       eye.position.set(side * 0.06, 1.04, 0.19);
       body.add(arm, leg, eye);
+    }
+    if (titan) {
+      for (let i = 0; i < 5; i++) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 5), MATERIALS.eyeRed);
+        const a = (i / 5) * Math.PI * 2;
+        spike.position.set(Math.cos(a) * 0.12, 1.2, Math.sin(a) * 0.12);
+        body.add(spike);
+      }
+      g.scale.setScalar(2.2);
     }
   }
   g.traverse((o) => {
@@ -178,7 +190,7 @@ class MonsterView {
     const s = 0.9 + Math.min(0.5, (monster.strength - 1) * 0.3);
     this.body.scale.setScalar(s);
     this.bar = new HealthBar(0.5);
-    this.bar.group.position.y = monster.type === 'golem' ? 1.35 : monster.type === 'spirit' ? 1.25 : 0.75;
+    this.bar.group.position.y = monster.type === 'titan' ? 1.4 : monster.type === 'golem' ? 1.35 : monster.type === 'spirit' ? 1.25 : 0.75;
     this.group.add(this.bar.group);
     this.phase = Math.random() * 6;
     this.lunge = 0;
@@ -198,8 +210,8 @@ export class Actors {
     scene.add(this.rings);
     this.ringGeometry = new THREE.RingGeometry(0.3, 0.38, 24).rotateX(-Math.PI / 2);
     this.ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthWrite: false });
-    this.shotGeometry = { bolt: new THREE.CylinderGeometry(0.02, 0.02, 0.35, 5).rotateX(Math.PI / 2), arrow: new THREE.CylinderGeometry(0.025, 0.025, 0.45, 5).rotateX(Math.PI / 2), spell: new THREE.SphereGeometry(0.12, 10, 8) };
-    this.shotMaterial = { bolt: new THREE.MeshBasicMaterial({ color: 0x5b4027 }), arrow: new THREE.MeshBasicMaterial({ color: 0x5b4027 }), spell: new THREE.MeshBasicMaterial({ color: 0x9fd7ff }) };
+    this.shotGeometry = { bolt: new THREE.CylinderGeometry(0.02, 0.02, 0.35, 5).rotateX(Math.PI / 2), arrow: new THREE.CylinderGeometry(0.025, 0.025, 0.45, 5).rotateX(Math.PI / 2), spell: new THREE.SphereGeometry(0.12, 10, 8), boulder: new THREE.DodecahedronGeometry(0.16, 0) };
+    this.shotMaterial = { bolt: new THREE.MeshBasicMaterial({ color: 0x5b4027 }), arrow: new THREE.MeshBasicMaterial({ color: 0x5b4027 }), spell: new THREE.MeshBasicMaterial({ color: 0x9fd7ff }), boulder: new THREE.MeshStandardMaterial({ color: 0x8c8377, flatShading: true }) };
   }
 
   // Screen-space lookup for taps: the unit nearest to a point on screen.
@@ -364,8 +376,10 @@ export class Actors {
       const t = Math.min(1, s.t);
       const fromY = ground(s.from.x, s.from.z) + (s.from.y ?? 0.5);
       const toY = ground(s.to.x, s.to.z) + 0.5;
-      mesh.position.set(s.from.x + (s.to.x - s.from.x) * t, fromY + (toY - fromY) * t + Math.sin(t * Math.PI) * 0.6, s.from.z + (s.to.z - s.from.z) * t);
-      mesh.lookAt(s.to.x, toY, s.to.z);
+      const arc = s.kind === 'boulder' ? 2.5 : 0.6;
+      mesh.position.set(s.from.x + (s.to.x - s.from.x) * t, fromY + (toY - fromY) * t + Math.sin(t * Math.PI) * arc, s.from.z + (s.to.z - s.from.z) * t);
+      if (s.kind === 'boulder') mesh.rotation.x += dt * 6;
+      else mesh.lookAt(s.to.x, toY, s.to.z);
     }
     for (const [s, mesh] of this.shots) {
       if (!live.has(s)) {

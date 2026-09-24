@@ -422,7 +422,7 @@ function spawnWave(state, events) {
     state.monsters.push({ id: state.nextId++, type, x, z, hp, maxHp: hp, path: [], cooldown: 1 + Math.random(), target: null, strength });
   });
   reveal(state, start.q, start.r, 1);
-  events.push({ type: 'wave', number: n, at: [start.q, start.r] });
+  events.push({ type: 'wave', number: n, at: [start.q, start.r], boss: waveMonsters(n).includes('titan') });
 }
 
 const hexOf = (a) => fromWorld(a.x, a.z);
@@ -597,13 +597,13 @@ function combat(state, dt, events) {
     const foe = state.monsters.filter((m) => alive(m) && worldDist(m, at) <= attack.range).sort((a, c) => worldDist(a, at) - worldDist(c, at))[0];
     if (foe) {
       b.cooldown = attack.cooldown;
-      state.shots.push({ kind: 'arrow', from: { x: at.x, z: at.z, y: 2 }, to: foe, t: 0, damage: attack.damage * b.level, splash: 0 });
+      state.shots.push({ kind: attack.shot ?? 'arrow', from: { x: at.x, z: at.z, y: 2 }, to: foe, t: 0, damage: attack.damage * b.level, splash: attack.splash ?? 0, slow: attack.shot === 'boulder' });
     }
   }
 
   // Projectiles fly for a short while, then hit.
   for (const s of state.shots) {
-    s.t += dt / 0.45;
+    s.t += dt / (s.slow ? 1.1 : 0.45);
     if (s.t >= 1 && !s.done) {
       s.done = true;
       if (s.splash) {

@@ -15,10 +15,10 @@ const HTML = {
       </ul>
       <h3>Army and monsters</h3>
       <ul>
-        <li>The <b>barracks</b> trains knights and barbarians, the <b>archery range</b> crossbow rogues and fast scouts, the <b>chapel</b> mages. <b>Towers</b> shoot monsters by themselves.</li>
+        <li>The <b>barracks</b> trains knights and barbarians, the <b>archery range</b> crossbow rogues and fast scouts, the <b>chapel</b> mages. <b>Towers</b> shoot monsters by themselves; <b>catapult towers</b> hurl boulders further, hitting several at once.</li>
         <li>Units gain experience from fights and dungeons and level up to 5 (a star each). The <b>blacksmith</b> researches better weapons and armour for all of them.</li>
         <li>Tap a unit (or <b>Army</b> to pick several), then tap a tile to send them there. They explore the dark as they go and fight monsters they meet.</li>
-        <li>After ten minutes monsters start coming from the shore, every few minutes and stronger each time. They attack buildings; repair what they destroy.</li>
+        <li>After ten minutes monsters start coming from the shore, every few minutes and stronger each time; every fifth wave a stone titan leads them. They attack buildings; repair what they destroy.</li>
       </ul>
       <h3>Dungeons</h3>
       <p>Dark doorways hide dungeons. Tap one and send a party. They come back after a while: with loot if they win, fewer of them if they don't. Each win makes that dungeon harder and richer.</p>
@@ -37,10 +37,10 @@ const HTML = {
       </ul>
       <h3>Armé och monster</h3>
       <ul>
-        <li><b>Kasernen</b> tränar riddare och barbarer, <b>skjutbanan</b> armborstskyttar och snabba spejare, <b>kapellet</b> magiker. <b>Torn</b> skjuter monster av sig själva.</li>
+        <li><b>Kasernen</b> tränar riddare och barbarer, <b>skjutbanan</b> armborstskyttar och snabba spejare, <b>kapellet</b> magiker. <b>Torn</b> skjuter monster av sig själva; <b>katapulttorn</b> slungar stenblock längre och träffar flera på en gång.</li>
         <li>Enheter får erfarenhet av strider och grottor och går upp till nivå 5 (en stjärna per nivå). <b>Smedjan</b> forskar fram bättre vapen och rustningar åt alla.</li>
         <li>Tryck på en enhet (eller <b>Armé</b> för att välja flera) och sedan på en ruta för att skicka dem dit. De utforskar mörkret på vägen och slåss mot monster de möter.</li>
-        <li>Efter tio minuter börjar monster komma från stranden, med några minuters mellanrum och starkare varje gång. De anfaller byggnader; reparera det de förstör.</li>
+        <li>Efter tio minuter börjar monster komma från stranden, med några minuters mellanrum och starkare varje gång; var femte våg leds av en stentitan. De anfaller byggnader; reparera det de förstör.</li>
       </ul>
       <h3>Grottor</h3>
       <p>Mörka portar döljer grottor. Tryck på en och skicka in en grupp. De kommer tillbaka efter en stund: med byte om de vinner, färre om de förlorar. Varje seger gör grottan svårare och rikare.</p>

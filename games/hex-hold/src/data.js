@@ -21,9 +21,10 @@ export const BUILDINGS = {
   archery: { model: 'building_archeryrange_blue', cost: { wood: 90, stone: 30 }, time: 40, hp: 260, workers: 1, trains: ['rogue', 'scout'] },
   chapel: { model: 'building_church_blue', cost: { stone: 90, gold: 60 }, time: 50, hp: 260, workers: 1, trains: ['mage'] },
   blacksmith: { model: 'building_blacksmith_blue', cost: { wood: 70, stone: 60 }, time: 40, hp: 260, workers: 2, research: true },
+  catapult: { model: 'building_tower_catapult_blue', cost: { wood: 60, stone: 120, gold: 40 }, time: 50, hp: 420, workers: 2, reveal: 3, attack: { damage: 28, range: 5, cooldown: 4, splash: 1, shot: 'boulder' }, terrain: ['grass', 'hills', 'forest'] },
   tower: { model: 'building_tower_A_blue', cost: { wood: 30, stone: 60 }, time: 35, hp: 350, workers: 1, reveal: 3, attack: { damage: 9, range: 3, cooldown: 1.4 }, terrain: ['grass', 'hills', 'forest'] },
 };
-export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tower', 'barracks', 'archery', 'chapel', 'blacksmith'];
+export const BUILD_ORDER = ['home', 'farm', 'lumbermill', 'mine', 'windmill', 'watermill', 'market', 'tower', 'catapult', 'barracks', 'archery', 'chapel', 'blacksmith'];
 export const DEFAULT_TERRAIN = ['grass', 'forest'];
 export const BUILD_RANGE = 2; // new buildings go within this many hexes of an existing one
 
@@ -43,7 +44,9 @@ export const MONSTERS = {
   slime: { hp: 45, damage: 6, range: 1, speed: 0.8, bounty: 4 },
   spirit: { hp: 32, damage: 9, range: 1, speed: 1.5, bounty: 6 },
   golem: { hp: 240, damage: 22, range: 1, speed: 0.55, bounty: 25 },
+  titan: { hp: 1400, damage: 45, range: 1, speed: 0.45, bounty: 150, boss: true },
 };
+export const BOSS_EVERY = 5; // every 5th wave brings a boss
 
 // Waves start after this much play time, then come regularly and grow.
 export const FIRST_WAVE = 10 * 60;
@@ -53,6 +56,7 @@ export function waveMonsters(n) {
     ...Array(2 + n).fill('slime'),
     ...Array(Math.max(0, n - 2)).fill('spirit'),
     ...Array(Math.max(0, Math.floor((n - 3) / 2))).fill('golem'),
+    ...Array(n % BOSS_EVERY === 0 ? n / BOSS_EVERY : 0).fill('titan'),
   ];
 }
 export const waveStrength = (n) => 1.1 ** (n - 1);

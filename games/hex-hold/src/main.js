@@ -341,7 +341,7 @@ function react(events, now) {
         break;
       case 'wave':
         playSound('horn');
-        ui.toast(tr('waveNow', { n: e.number }), 'alarm');
+        ui.toast(e.boss ? tr('bossWave', { n: e.number }) : tr('waveNow', { n: e.number }), 'alarm');
         break;
       case 'destroyed':
         playSound('crumble');

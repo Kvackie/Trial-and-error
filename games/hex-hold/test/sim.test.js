@@ -143,3 +143,15 @@ test('heroes level up from kills, and blacksmith research makes every unit stron
   assert.ok(events.some((e) => e.type === 'researched'));
   assert.ok(damageOf(state, u) > before);
 });
+
+test('every fifth wave brings a titan, and catapults hit several monsters', async () => {
+  const { waveMonsters } = await import('../src/data.js');
+  assert.ok(waveMonsters(5).includes('titan'));
+  assert.ok(!waveMonsters(4).includes('titan'));
+  const state = newGame(4);
+  state.buildings.push({ id: 700, type: 'catapult', q: 0, r: 1, level: 1, hp: 420, state: 'ready', left: 0, queue: [] });
+  const { x, z } = toWorld(2, 1);
+  for (let i = 0; i < 3; i++) state.monsters.push({ id: 800 + i, type: 'slime', x, z, hp: 100, maxHp: 100, path: [], cooldown: 99, target: null, strength: 1 });
+  run(state, 2);
+  assert.ok(state.monsters.every((m) => m.hp < 100), 'splash hit all three');
+});

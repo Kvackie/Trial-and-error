@@ -28,6 +28,7 @@ export class UI {
     this.handlers = handlers;
     this.top = document.querySelector('#resources');
     this.wave = document.querySelector('#wave');
+    this.boss = document.querySelector('#boss');
     this.panel = document.querySelector('#panel');
     this.toasts = document.querySelector('#toasts');
     this.thumbs = {};
@@ -51,6 +52,13 @@ export class UI {
     if (state.monsters.length) this.wave.textContent = tr('waveNow', { n: w.number });
     else this.wave.textContent = w.next < 180 || w.number > 0 ? tr('nextWave', { time: clock(w.next) }) : tr('quiet');
     this.wave.classList.toggle('alarm', state.monsters.length > 0 || w.next < 30);
+    // A boss gets its own health bar under the top bar.
+    const boss = state.monsters.find((m) => m.type === 'titan');
+    this.boss.hidden = !boss;
+    if (boss) {
+      this.boss.querySelector('b').textContent = tr('m_titan');
+      this.boss.querySelector('i').style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+    }
   }
 
   // --- Bottom panel -----------------------------------------------------------------
