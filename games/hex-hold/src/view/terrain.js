@@ -1,7 +1,7 @@
 // The island: tiles, nature on them, dungeon doorways and the dark over unexplored hexes.
 // Everything that repeats is drawn with instancing, so hundreds of hexes stay cheap.
 import * as THREE from 'three';
-import { key, toWorld } from '../hex.js';
+import { SIZE, key, toWorld } from '../hex.js';
 import { tileTop } from '../world.js';
 import { buildingAt } from '../sim.js';
 import { source } from './assets.js';
@@ -13,6 +13,7 @@ const DECO = {
   grass: ['tree_single_A', 'tree_single_B', 'rock_single_A', 'rock_single_C'],
 };
 export const FOG_COLOUR = 0x0b1522;
+const GRASS_DEPTH = 0.18; // how much of the grass tile shows above the earth
 
 const hash = (k) => [...k].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
 
@@ -49,6 +50,10 @@ export class Terrain {
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -0.35;
     scene.add(sea);
+    // Earth under the grass: a hex column one unit tall with its top at y = 0,
+    // stretched down to the floor for each hex.
+    this.cliffGeometry = new THREE.CylinderGeometry(SIZE * 0.995, SIZE * 0.995, 1, 6).translate(0, -0.5, 0);
+    this.cliffMaterial = new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 1, flatShading: true });
   }
 
   // Rebuilds everything. Called when the fog lifts or a building goes up.
@@ -60,6 +65,7 @@ export class Terrain {
     const byModel = new Map();
     const add = (name, matrix) => (byModel.get(name) ?? byModel.set(name, []).get(name)).push(matrix);
     const hidden = [];
+    const cliffs = [];
     for (const tile of state.tiles.values()) {
       const k = key(tile.q, tile.r);
       const { x, z } = toWorld(tile.q, tile.r);
@@ -73,7 +79,11 @@ export class Terrain {
       // The tile model is a column one unit deep; stretch it down to the same floor
       // for every height, so taller hexes show more of their earth sides.
       if (tile.terrain === 'water') add('hex_water', place(x, 0, z));
-      else add('hex_grass', place(x, top, z, 0, 1, top + 1));
+      else {
+        // A thin grass top on an earth column, so raised hexes show brown cliffs.
+        add('hex_grass', place(x, top, z, 0, 1, GRASS_DEPTH));
+        cliffs.push(place(x, top - GRASS_DEPTH, z, 0, 1, top - GRASS_DEPTH + 1));
+      }
       if (buildingAt(state, tile.q, tile.r)) continue;
       if (tile.dungeon) {
         this.dungeon(add, x, z, top);
@@ -90,6 +100,12 @@ export class Terrain {
     }
     for (const [name, matrices] of byModel) this.group.add(instanced(name, matrices, name === 'hex_grass' ? this.grassMaterial() : undefined));
     this.group.add(instanced('hex_grass', hidden, this.fogMaterial));
+    if (cliffs.length) {
+      const mesh = new THREE.InstancedMesh(this.cliffGeometry, this.cliffMaterial, cliffs.length);
+      cliffs.forEach((m, i) => mesh.setMatrixAt(i, m));
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    }
   }
 
   // The pack's grass is a bright lime; a touch greener reads better across a whole island.
