@@ -32,10 +32,8 @@ test('only the site, the apps and local development may call it', () => {
   assert.equal(allowedOrigin(null), null);
 });
 
-test('names are tidied and discoveries are known per game', async () => {
-  const { cleanName, DISCOVERIES } = await import('../src/rules.js');
+test('names are tidied', async () => {
+  const { cleanName } = await import('../src/rules.js');
   assert.equal(cleanName('  Ada  L '), 'Ada L');
   assert.equal(cleanName('<b>'), null);
-  assert.equal(DISCOVERIES['wild-pond'], undefined);
-  assert.ok(DISCOVERIES['potion-market'].has('nightGlass'));
 });

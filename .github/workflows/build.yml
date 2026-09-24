@@ -23,7 +23,6 @@ on:
           - block-drop
           - hex-hold
           - lantern-maze
-          - potion-market
           - potion-match
           # games:end
       apk:

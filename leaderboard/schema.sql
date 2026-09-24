@@ -16,24 +16,9 @@ CREATE TABLE IF NOT EXISTS recent (
 );
 CREATE INDEX IF NOT EXISTS recent_by_key ON recent (key, at);
 
--- Wild Pond was removed: its shared pond, scores and first finds go too.
+-- Removed games: Wild Pond (shared pond) and Potion Market (shared market, first finds).
+-- Their tables and scores go too.
 DROP TABLE IF EXISTS pond;
-DELETE FROM scores WHERE game = 'wild-pond';
-
--- Potion Market: selling pressure per potion (decays over time, see market.js).
-CREATE TABLE IF NOT EXISTS market (
-  potion TEXT PRIMARY KEY,
-  pressure REAL NOT NULL,
-  updated INTEGER NOT NULL
-);
-
--- The first player to find each rare thing, per game.
-CREATE TABLE IF NOT EXISTS discoveries (
-  game TEXT NOT NULL,
-  key TEXT NOT NULL,
-  name TEXT NOT NULL,
-  client TEXT NOT NULL,
-  at INTEGER NOT NULL,
-  PRIMARY KEY (game, key)
-);
-DELETE FROM discoveries WHERE game = 'wild-pond';
+DROP TABLE IF EXISTS market;
+DROP TABLE IF EXISTS discoveries;
+DELETE FROM scores WHERE game IN ('wild-pond', 'potion-market');

@@ -1,18 +1,11 @@
 // What the service accepts. Kept apart from the request handling so it can be
 // tested in Node.
-import { POTIONS } from '../../games/potion-market/src/data.js';
 
 // One entry per game with a leaderboard. max rejects impossible scores.
 export const GAMES = {
   'block-drop': { max: 5_000_000 },
   'potion-match': { max: 50_000_000 },
   'lantern-maze': { max: 1_000 }, // deepest level reached
-  'potion-market': { max: 1_000_000_000 }, // gold earned from sales
-};
-
-// What each game can record a "first to discover" for.
-export const DISCOVERIES = {
-  'potion-market': new Set(POTIONS.map((p) => p.id)),
 };
 
 export const KEEP_PER_GAME = 100; // older, lower scores are dropped
