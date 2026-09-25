@@ -16,7 +16,9 @@ import { showToast } from '../../../../shared/toast.js';
 
 const W = 720;
 const HEADER = 104;
-const TABS = 118;
+// The panel under the field (tab content and tab bar) has a fixed height, sized so every
+// tab fits without scrolling; the field takes the rest of the screen.
+const PANEL = 560;
 const STATUS = 50;
 const COL = 48;
 const LEFT = (W - D.COLS * COL) / 2;
@@ -89,13 +91,11 @@ export class GameScene extends Phaser.Scene {
   // --- Layout ---------------------------------------------------------------------------------
   layout() {
     const H = this.scale.height;
-    const panelMin = 300;
-    this.rowH = Phaser.Math.Clamp(Math.floor((H - HEADER - TABS - STATUS - panelMin - TOP_EDGE) / D.ROWS), 54, 96);
+    this.rowH = Phaser.Math.Clamp(Math.floor((H - HEADER - STATUS - PANEL - TOP_EDGE) / D.ROWS), 40, 96);
     this.fieldTop = HEADER;
     this.fieldBottom = HEADER + TOP_EDGE + this.rowH * D.ROWS;
     this.statusY = this.fieldBottom + STATUS / 2;
     this.panelTop = this.fieldBottom + STATUS;
-    this.panelBottom = H - TABS;
     this.spriteScale = Math.min(3, this.rowH / 30);
   }
 
